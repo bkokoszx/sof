@@ -62,6 +62,7 @@ struct dma_trace_data {
 	uint32_t messages;
 	uint32_t host_size;
 	struct work dmat_work;
+	struct system_time host_wclk;
 	uint32_t enabled;
 	uint32_t copy_in_progress;
 	uint32_t stream_tag;

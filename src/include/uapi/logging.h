@@ -123,7 +123,7 @@ struct log_entry_header {
 	uint32_t rsvd : 24;	/* Unused */
 	uint32_t core_id : 8;	/* Reporting core's id */
 
-	uint64_t timestamp;	/* Timestamp (in dsp ticks) */
+	uint64_t timestamp;	/* Timestamp (in host time domain) */
 } __attribute__((__packed__));
 
 #endif //#ifndef __INCLUDE_LOGGING__

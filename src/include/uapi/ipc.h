@@ -40,6 +40,7 @@
 #define __INCLUDE_UAPI_IPC_H__
 
 #include <uapi/abi.h>
+#include <uapi/logging.h>
 #include <sof/io.h>
 
 /** \addtogroup sof_uapi uAPI
@@ -952,6 +953,7 @@ struct sof_ipc_dma_trace_params {
 	struct sof_ipc_hdr hdr;
 	struct sof_ipc_host_buffer buffer;
 	uint32_t stream_tag;
+	struct system_time wall_clk;
 }  __attribute__((packed));
 
 /* DMA for Trace params info - SOF_IPC_DEBUG_DMA_PARAMS */

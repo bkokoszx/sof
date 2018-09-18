@@ -703,6 +703,14 @@ static int ipc_dma_trace_config(uint32_t header)
 
 	/* host buffer size for DMA trace */
 	_ipc->dmat->host_size = params->buffer.size;
+
+	/* synchronize with host wallclock */
+	uint64_t sync_time = ((uint64_t)params->wall_clk.val_u << 32)
+		+ params->wall_clk.val_l
+		- platform_timer_get(platform_timer) / clock_get_freq(CLK_CPU);
+
+	_ipc->dmat->host_wclk =
+		(struct system_time){ sync_time & 0xffffffff, sync_time >> 32 };
 #endif
 	trace_ipc("DAp");
 

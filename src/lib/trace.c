@@ -46,19 +46,30 @@ struct trace {
 };
 
 static struct trace *trace;
+static struct system_time *sys_time;
 
 /* calculates total message size, both header and payload */
 #define message_size(args_num) \
 	((sizeof(struct log_entry_header) + (1 + args_num) * sizeof(uint32_t)) \
 	/ sizeof(uint32_t))
 
-static void put_header(volatile uint32_t *dst, uint64_t timestamp)
+static uint64_t translate_timestamp(uint64_t ticks)
+{
+	uint64_t time = 0;
+
+	if (sys_time)
+		time = ((uint64_t)sys_time->val_u << 32) | sys_time->val_l;
+
+	return time + ticks / clock_get_freq(CLK_CPU);
+}
+
+static void put_header(volatile uint32_t *dst, uint64_t ticks)
 {
 	struct log_entry_header header;
 
 	header.rsvd = 0;
 	header.core_id = cpu_get_id();
-	header.timestamp = timestamp;
+	header.timestamp = translate_timestamp(ticks);
 
 	int i = 0;
 
@@ -577,6 +588,8 @@ void trace_off(void)
 void trace_init(struct sof *sof)
 {
 	dma_trace_init_early(sof);
+
+	sys_time = &sof->dmat->host_wclk;
 
 	trace = rzalloc(RZONE_SYS | RZONE_FLAG_UNCACHED, SOF_MEM_CAPS_RAM,
 			sizeof(*trace));
