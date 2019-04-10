@@ -155,6 +155,104 @@ static int pipeline_for_each_comp(struct comp_dev *current,
 	return err;
 }
 
+
+#define MAX_AMOUNT_OF_COMPONENTS 100
+
+static inline struct comp_dev * get_top(struct comp_dev **tab, int *idx)
+{
+	struct comp_dev *ret = NULL;
+
+	if (*idx > 0) {
+		ret = tab[(*idx) - 1];
+		(*idx)--;
+	}
+	
+	return ret;
+}
+
+/* Generic method for walking the graph upstream or downstream.
+* It requires function pointer for recursion.
+*/
+static int pipeline_for_each_comp_dfs(struct comp_dev *current,
+	int(*func)(struct comp_dev *, void *, int),
+	void *data,
+	void(*buff_func)(struct comp_buffer *),
+	int dir)
+{
+	struct list_item *buffer_list = comp_buffer_list(current, dir);
+	struct list_item *clist;
+	struct comp_buffer *buffer;
+	struct comp_dev *comp;
+	struct comp_dev *buffer_comp;
+	int err = 0;
+
+	struct comp_dev *visited[MAX_AMOUNT_OF_COMPONENTS];
+	int visited_idx = 0;
+
+	struct comp_dev *queue[MAX_AMOUNT_OF_COMPONENTS];
+	int queue_idx = 0;
+
+	int visit_flag;
+	int i;
+
+	/* adding to queue starting component */
+	queue[queue_idx++] = current;
+
+	/* mark started component as visited */
+	visited[visited_idx++] = current;
+
+	/* until queue is not empty */
+	while (queue_idx > 0) {
+		/* get from queue and remove it */
+		comp = get_top(queue, &queue_idx);
+
+		trace_pipe("comp->comp.id: %d", comp->comp.id);
+
+		/* invoke component function */
+		if (func) {
+			err = func(comp, data, dir);
+			if (err < 0)
+				break;
+
+			/* go to next path */
+			if (err == PPL_STATUS_PATH_STOP)
+				continue;
+		}
+
+		buffer_list = comp_buffer_list(comp, dir);
+
+		/* searching for unvisited component */
+		list_for_item(clist, buffer_list) {
+			buffer = buffer_from_list(clist, struct comp_buffer,
+						  dir);
+			buffer_comp = buffer_get_comp(buffer, dir);
+
+			if (!buffer_comp)
+				continue;
+
+			/* check whether component was visited */
+			visit_flag = 0;
+			for (i = 0; i < visited_idx; i++) {
+				if (visited[i] == buffer_comp) {
+					visit_flag = 1;
+					break;
+				}
+			}
+
+			if (!visit_flag) {
+				/* add component to queue */
+				queue[queue_idx++] = buffer_comp;
+
+				/* mark component as visited */
+				visited[visited_idx++] = buffer_comp;
+			}
+		}
+	}
+
+	return err;
+}
+
+
 static int pipeline_comp_complete(struct comp_dev *current, void *data,
 				  int dir)
 {
