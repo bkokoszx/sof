@@ -440,11 +440,8 @@ static int pipeline_comp_prepare(struct comp_dev *current, void *data, int dir)
 		    current->comp.id, dir);
 
 	err = comp_prepare(current);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
-		return err;
 
-	return pipeline_for_each_comp(current, &pipeline_comp_prepare, data,
-				      &buffer_reset_pos, dir);
+	return err;
 }
 
 /* prepare the pipeline for usage - preload host buffers here */
@@ -457,7 +454,9 @@ int pipeline_prepare(struct pipeline *p, struct comp_dev *dev)
 
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_prepare(dev, NULL, dev->params.direction);
+	ret = pipeline_for_each_comp_dfs(dev, pipeline_comp_prepare, NULL,
+					 NULL, dev->params.direction);
+
 	if (ret < 0) {
 		trace_pipe_error("pipeline_prepare() error: ret = %d,"
 				 "dev->comp.id = %u", ret, dev->comp.id);
