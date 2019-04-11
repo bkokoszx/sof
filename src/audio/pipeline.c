@@ -579,8 +579,7 @@ static int pipeline_comp_trigger(struct comp_dev *current, void *data, int dir)
 	pipeline_comp_trigger_sched_comp(current->pipeline, current,
 					 ppl_data->cmd);
 
-	return pipeline_for_each_comp(current, &pipeline_comp_trigger, data,
-				      NULL, dir);
+	return 0;
 }
 
 /* trigger pipeline on slave core */
@@ -639,7 +638,9 @@ int pipeline_trigger(struct pipeline *p, struct comp_dev *host, int cmd)
 
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_trigger(host, &data, host->params.direction);
+	ret = pipeline_for_each_comp_dfs(host, pipeline_comp_trigger,
+					 &data, NULL, host->params.direction);
+
 	if (ret < 0) {
 		trace_ipc_error("pipeline_trigger() error: ret = %d, host->"
 				"comp.id = %u, cmd = %d", ret, host->comp.id,
