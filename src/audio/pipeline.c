@@ -787,7 +787,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current, void *data,
 	if (!comp_is_active(current)) {
 		tracev_pipe("pipeline_comp_timestamp(), "
 			    "current is not active");
-		return 0;
+		return PPL_STATUS_PATH_STOP;
 	}
 
 	/* is component a DAI endpoint? */
@@ -798,8 +798,7 @@ static int pipeline_comp_timestamp(struct comp_dev *current, void *data,
 		return -1;
 	}
 
-	return pipeline_for_each_comp(current, &pipeline_comp_timestamp, data,
-				      NULL, dir);
+	return 0;
 }
 
 /* Get the timestamps for host and first active DAI found. */
@@ -813,7 +812,8 @@ void pipeline_get_timestamp(struct pipeline *p, struct comp_dev *host,
 	data.start = host;
 	data.posn = posn;
 
-	pipeline_comp_timestamp(host, &data, host->params.direction);
+	pipeline_for_each_comp_dfs(host, pipeline_comp_timestamp, &data, NULL,
+				   host->params.direction);
 }
 
 static int pipeline_comp_xrun(struct comp_dev *current, void *data, int dir)
