@@ -659,11 +659,8 @@ static int pipeline_comp_reset(struct comp_dev *current, void *data, int dir)
 		    current->comp.id, dir);
 
 	err = comp_reset(current);
-	if (err < 0 || err == PPL_STATUS_PATH_STOP)
-		return err;
 
-	return pipeline_for_each_comp(current, &pipeline_comp_reset, data,
-				      NULL, dir);
+	return err;
 }
 
 /* reset the whole pipeline */
@@ -676,7 +673,9 @@ int pipeline_reset(struct pipeline *p, struct comp_dev *host)
 
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_reset(host, NULL, host->params.direction);
+	ret = pipeline_for_each_comp_dfs(host, pipeline_comp_reset, NULL, NULL,
+					 host->params.direction);
+
 	if (ret < 0) {
 		trace_ipc_error("pipeline_reset() error: ret = %d, host->comp."
 				"id = %u", ret, host->comp.id);
