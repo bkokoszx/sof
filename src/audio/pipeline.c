@@ -392,8 +392,7 @@ static int pipeline_comp_params(struct comp_dev *current, void *data, int dir)
 	/* save params changes made by component */
 	ppl_data->params->params = current->params;
 
-	return pipeline_for_each_comp(current, &pipeline_comp_params, data,
-				      NULL, dir);
+	return 0;
 }
 
 /* Send pipeline component params from host to endpoints.
@@ -421,7 +420,9 @@ int pipeline_params(struct pipeline *p, struct comp_dev *host,
 
 	spin_lock_irq(&p->lock, flags);
 
-	ret = pipeline_comp_params(host, &data, host->params.direction);
+	ret = pipeline_for_each_comp_dfs(host, pipeline_comp_params, &data,
+					 NULL, host->params.direction);
+
 	if (ret < 0) {
 		trace_pipe_error("pipeline_params() error: ret = %d, host->"
 				 "comp.id = %u", ret, host->comp.id);
