@@ -182,9 +182,16 @@ struct sof_ipc_comp_process {
 	struct sof_ipc_comp_config config;
 	uint32_t size;	/**< size of bespoke data section in bytes */
 	uint32_t type;	/**< sof_ipc_effect_type */
+	uint32_t obs;   /**< output buffer size - free space in output buffer
+			  *  measured in samples required to run module
+			  */
+	uint32_t ibs;   /**< input buffer size - amount of data measured in
+			  *  samples available at input buffer required to run
+			  *  module
+			  */
 
 	/* reserved for future use */
-	uint32_t reserved[7];
+	uint32_t reserved[5];
 
 	unsigned char data[0];
 } __attribute__((packed));
