@@ -49,6 +49,11 @@ if(NOT BUILD_LIBRARY)
 			kpb.c
 		)
 	endif()
+	if(CONFIG_COMP_PROCESSING_MODULE)
+		add_local_sources(sof
+			processing_module.c
+		)
+	endif()
 	if(CONFIG_COMP_SEL)
 		add_subdirectory(selector)
 	endif()
