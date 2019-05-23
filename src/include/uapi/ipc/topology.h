@@ -204,8 +204,17 @@ struct sof_ipc_comp_process {
 	uint32_t size;	/**< size of bespoke data section in bytes */
 	uint32_t type;	/**< sof_ipc_effect_type */
 
+	uint32_t bs; /**< block size - nominal amount of samples processed in
+			  single processing cycle */
+	uint32_t obs; /**< output buffer size - output buffer space in samples
+			   required to run module */
+	uint32_t ibs; /**< input buffer size - amount of samples available at
+			   input required to run module */
+	uint32_t bpc; /**< block processing cost - number of Core clocks
+			   required to process single block */
+
 	/* reserved for future use */
-	uint32_t reserved[7];
+	uint32_t reserved[3];
 
 	unsigned char data[0];
 } __attribute__((packed));
