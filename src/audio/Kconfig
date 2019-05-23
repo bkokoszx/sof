@@ -68,6 +68,13 @@ config COMP_SEL
 	help
 	  Select for SEL component
 
+config COMP_PROCESSING_MODULE
+	bool "Dummy processing module"
+	default y
+	help
+	  Select for dummy proccesing module.
+	  Provides basic functionality for processing capabilities.
+
 config COMP_TEST_KEYPHRASE
 	bool "KEYPHRASE_TEST component"
 	default y
