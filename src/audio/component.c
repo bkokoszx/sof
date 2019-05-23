@@ -245,7 +245,8 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 	cl->sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 				   source_list);
 
-	/* check for underrun */
+	/*
+	// check for underrun 
 	if (cl->source->avail == 0) {
 		trace_comp_error("comp_get_copy_limits() error: "
 				 "source component buffer"
@@ -254,14 +255,14 @@ int comp_get_copy_limits(struct comp_dev *dev, struct comp_copy_limits *cl)
 		return -EIO;
 	}
 
-	/* check for overrun */
+	// check for overrun
 	if (cl->sink->free == 0) {
 		trace_comp_error("comp_get_copy_limits() error: "
 				 "sink component buffer"
 				 " has not enough free bytes for copy");
 		comp_overrun(dev, cl->sink, 0, 0);
 		return -EIO;
-	}
+	} */
 
 	cl->frames = comp_avail_frames(cl->source, cl->sink);
 	cl->source_frame_bytes = comp_frame_bytes(cl->source->source);

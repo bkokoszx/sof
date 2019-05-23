@@ -95,6 +95,41 @@ struct comp_buffer *buffer_new(struct sof_ipc_buffer *desc)
 	return buffer;
 }
 
+int buffer_resize(struct comp_buffer *buffer, uint32_t size)
+{
+	int ret = 0;
+
+	trace_buffer("buffer_resize()");
+
+	ret = buffer_set_size(buffer, size);
+	if (ret == 0)
+		return ret;
+
+	rfree(buffer->addr);
+
+	buffer->addr = rballoc(RZONE_BUFFER, buffer->ipc_buffer.caps, size);
+	if (!buffer->addr) {
+		rfree(buffer);
+		trace_buffer_error("buffer_new() error: "
+			"could re alloc size = %u "
+			"bytes of type = %u",
+			size, buffer->ipc_buffer.caps);
+		return -ENOMEM;
+	}
+
+	buffer->size = size;
+	buffer->alloc_size = size;
+	buffer->w_ptr = buffer->addr;
+	buffer->r_ptr = buffer->addr;
+	buffer->end_addr = buffer->addr + size;
+	buffer->free = size;
+	buffer->avail = 0;
+
+	buffer_zero(buffer);
+
+	return 0;
+}
+
 /* free component in the pipeline */
 void buffer_free(struct comp_buffer *buffer)
 {
@@ -217,14 +252,28 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 	    !buffer->source->is_dma_connected)
 		dcache_writeback_region(buffer->r_ptr, bytes);
 
+	tracev_buffer("comp_update_buffer_consume(): buffer->cb, "
+		"(buffer->avail << 16) | buffer->free = %08x, "
+		"(buffer->ipc_buffer.comp.id << 16) | buffer->size = "
+		" %08x, (buffer->r_ptr - buffer->addr) << 16 | "
+		"(buffer->w_ptr - buffer->addr)) = %08x",
+		(buffer->avail << 16) | buffer->free,
+		(buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		(buffer->r_ptr - buffer->addr) << 16 |
+		(buffer->w_ptr - buffer->addr));
+
 	if (buffer->cb && buffer->cb_type & BUFF_CB_TYPE_CONSUME)
 		buffer->cb(buffer->cb_data, bytes);
 
 	spin_unlock_irq(&buffer->lock, flags);
 
-	tracev_buffer("comp_update_buffer_consume(), %u, %u, %u",
-		      (buffer->avail << 16) | buffer->free,
-		     (buffer->ipc_buffer.comp.id << 16) | buffer->size,
-		     (buffer->r_ptr - buffer->addr) << 16 |
-		     (buffer->w_ptr - buffer->addr));
+	tracev_buffer("comp_update_buffer_consume(), "
+		"(buffer->avail << 16) | buffer->free = %08x, "
+		"(buffer->ipc_buffer.comp.id << 16) | buffer->size = "
+		" %08x, (buffer->r_ptr - buffer->addr) << 16 | "
+		"(buffer->w_ptr - buffer->addr)) = %08x",
+		(buffer->avail << 16) | buffer->free,
+		(buffer->ipc_buffer.comp.id << 16) | buffer->size,
+		(buffer->r_ptr - buffer->addr) << 16 |
+		(buffer->w_ptr - buffer->addr));
 }

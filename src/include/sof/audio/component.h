@@ -656,6 +656,15 @@ static inline uint32_t comp_avail_frames(struct comp_buffer *source,
 	return MIN(src_frames, sink_frames);
 }
 
+static inline uint32_t comp_avail_samples(struct comp_buffer *source,
+	struct comp_buffer *sink)
+{
+	uint32_t src_samples = source->avail / comp_sample_bytes(source->source);
+	uint32_t sink_samples = sink->free / comp_sample_bytes(sink->sink);
+
+	return MIN(src_samples, sink_samples);
+}
+
 /**
  * Returns component state based on requested command.
  * @param cmd Request command.
