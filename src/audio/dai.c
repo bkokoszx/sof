@@ -85,6 +85,7 @@ struct dai_data {
 	uint32_t period_bytes;
 	int xrun;		/* true if we are doing xrun recovery */
 
+	uint32_t dma_start_flag;/* true if dma connected to dai was started */
 	uint32_t dai_pos_blks;	/* position in bytes (nearest block) */
 
 	/* host can read back this value without IPC */
@@ -454,6 +455,7 @@ static int dai_prepare(struct comp_dev *dev)
 		return PPL_STATUS_PATH_STOP;
 
 	dev->position = 0;
+	dd->dma_start_flag = 0;
 
 	if (!dd->config.elem_array.elems) {
 		trace_dai_error_with_ids(dev, "dai_prepare() error: Missing "
@@ -593,8 +595,8 @@ static int dai_copy(struct comp_dev *dev)
 
 	tracev_dai_with_ids(dev, "dai_copy()");
 
-	/* start DMA on preload */
-	if (pipeline_is_preload(dev->pipeline)) {
+	/* start DMA if we have any data available */
+	if (!dd->dma_start_flag && dd->dma_buffer->avail) {
 		/* start the DAI */
 		ret = dma_start(dd->dma, dd->chan);
 		if (ret < 0)
@@ -603,7 +605,16 @@ static int dai_copy(struct comp_dev *dev)
 			    dev->params.direction);
 		platform_dai_wallclock(dev, &dd->wallclock);
 
+		dd->dma_start_flag = 1;
+
 		/* let's not copy further */
+		return 1;
+	}
+
+	/* if dma is not started we should schedule pipeline task here */
+	if (!dd->dma_start_flag) {
+		pipeline_schedule_copy_idle(dev->pipeline);
+
 		return 1;
 	}
 
