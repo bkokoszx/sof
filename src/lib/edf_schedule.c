@@ -536,11 +536,14 @@ static void edf_schedule_idle(void)
 
 		/* run task if we find any queued */
 		if (task->state == SOF_TASK_STATE_QUEUED) {
+			task->state = SOF_TASK_STATE_RUNNING;
 			task->func(task->data);
-			task->state = SOF_TASK_STATE_COMPLETED;
+			if (task->state == SOF_TASK_STATE_RUNNING) {
+				task->state = SOF_TASK_STATE_COMPLETED;
 
-			/* task done, remove it from the list */
-			list_item_del(clist);
+				/* task done, remove it from the list */
+				list_item_del(clist);
+			}
 		}
 	}
 }
