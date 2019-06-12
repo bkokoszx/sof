@@ -204,3 +204,36 @@ void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes)
 		     (buffer->r_ptr - buffer->addr) << 16 |
 		     (buffer->w_ptr - buffer->addr));
 }
+
+int comp_resize_sink_buffer(struct comp_buffer *buffer, uint32_t period_bytes,
+			    uint32_t periods)
+{
+	struct sof_ipc_comp_process *process;
+	struct comp_dev *sink = buffer->sink;
+	uint32_t prev_size = buffer->size;
+	uint32_t req_bytes = 0;
+	int ret;
+
+	/* TODO: need some generic type for all comp_process components */
+	if (sink->comp.type == SOF_COMP_PROCESSING_MODULE) {
+		process = COMP_GET_IPC(sink, sof_ipc_comp_process);
+		req_bytes = process->ibs * comp_sample_bytes(sink);
+	}
+
+	period_bytes = MAX(req_bytes, period_bytes);
+
+	ret = buffer_set_size(buffer, period_bytes * periods);
+	if (ret < 0)
+		return ret;
+
+	/* DMA buffer needs to be reconfigured */
+	if (prev_size && prev_size != buffer->size && sink->is_dma_connected) {
+		/* TODO: need something better than frames to calculate
+		 * buffer size in host and dai - this code is too messy
+		 */
+		sink->frames *= (buffer->size / prev_size);
+		comp_params(sink);
+	}
+
+	return 0;
+}

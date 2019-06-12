@@ -123,6 +123,10 @@ void comp_update_buffer_produce(struct comp_buffer *buffer, uint32_t bytes);
 /* called by a component after consuming data from this buffer */
 void comp_update_buffer_consume(struct comp_buffer *buffer, uint32_t bytes);
 
+/* called by a component to adjust sink buffer size */
+int comp_resize_sink_buffer(struct comp_buffer *buffer, uint32_t period_bytes,
+			    uint32_t periods);
+
 static inline void buffer_zero(struct comp_buffer *buffer)
 {
 	tracev_buffer("buffer_zero()");

@@ -260,19 +260,20 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 		return err;
 	}
 
-	if (!config->elem_array.elems) {
-		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
-				   config->direction,
-				   source_config->periods_sink,
-				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->r_ptr),
-				   dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
-		if (err < 0) {
-			trace_dai_error_with_ids(dev, "dai_playback_params() "
-						 "error: dma_sg_alloc() failed "
-						 "with err = %d", err);
-			return err;
-		}
+	if (config->elem_array.elems)
+		dma_sg_free(&config->elem_array);
+
+	err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
+			   config->direction,
+			   source_config->periods_sink,
+			   period_bytes,
+			   (uintptr_t)(dd->dma_buffer->r_ptr),
+			   dai_fifo(dd->dai, SOF_IPC_STREAM_PLAYBACK));
+	if (err < 0) {
+		trace_dai_error_with_ids(dev, "dai_playback_params() "
+					 "error: dma_sg_alloc() failed "
+					 "with err = %d", err);
+		return err;
 	}
 
 	return 0;
@@ -324,19 +325,20 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 		return err;
 	}
 
-	if (!config->elem_array.elems) {
-		err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
-				   config->direction,
-				   sink_config->periods_source,
-				   period_bytes,
-				   (uintptr_t)(dd->dma_buffer->w_ptr),
-				   dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
-		if (err < 0) {
-			trace_dai_error_with_ids(dev, "dai_capture_params() "
-						 "error: dma_sg_alloc() failed "
-						 "with err = %d", err);
-			return err;
-		}
+	if (config->elem_array.elems)
+		dma_sg_free(&config->elem_array);
+
+	err = dma_sg_alloc(&config->elem_array, RZONE_RUNTIME,
+			   config->direction,
+			   sink_config->periods_source,
+			   period_bytes,
+			   (uintptr_t)(dd->dma_buffer->w_ptr),
+			   dai_fifo(dd->dai, SOF_IPC_STREAM_CAPTURE));
+	if (err < 0) {
+		trace_dai_error_with_ids(dev, "dai_capture_params() "
+					 "error: dma_sg_alloc() failed "
+					 "with err = %d", err);
+		return err;
 	}
 
 	return 0;

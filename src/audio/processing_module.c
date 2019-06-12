@@ -238,10 +238,11 @@ static int proc_module_prepare(struct comp_dev *dev)
 	cd->preload = 1;
 
 	/* set sink buffer size */
-	ret = buffer_set_size(sink, out_sample_bytes * config->periods_sink);
+	ret = comp_resize_sink_buffer(sink, out_sample_bytes,
+				      config->periods_sink);
 	if (ret < 0) {
 		trace_proc_module_error("proc_module_prepare() error: "
-					"buffer_set_size() failed");
+					"comp_resize_sink_buffer() failed");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
 		return ret;
 	}
