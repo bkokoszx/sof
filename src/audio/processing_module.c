@@ -20,6 +20,8 @@
 
 #define PROC_MODULE_DEBUG_TRACES 1
 
+#define PROC_MODULE_DEFAULT_PERIODS 2 /* in order to achieve ping-pong */
+
 struct comp_data {
 	uint32_t preload;
 };
@@ -92,8 +94,9 @@ static int proc_module_cmd(struct comp_dev *dev, int cmd, void *data,
 	return 0;
 }
 
-static void proc_module_process(struct comp_buffer *source,
-				struct comp_buffer *sink, uint32_t samples)
+static void proc_module_process_s32(struct comp_buffer *source,
+				    struct comp_buffer *sink,
+				    uint32_t samples)
 {
 	int32_t *src;
 	int32_t *dest;
@@ -102,6 +105,21 @@ static void proc_module_process(struct comp_buffer *source,
 	for (i = 0; i < samples; i++) {
 		src = buffer_read_frag_s32(source, i);
 		dest = buffer_write_frag_s32(sink, i);
+		*dest = *src;
+	}
+}
+
+static void proc_module_process_s16(struct comp_buffer *source,
+				    struct comp_buffer *sink,
+				    uint32_t samples)
+{
+	int16_t *src;
+	int16_t *dest;
+	uint32_t i;
+
+	for (i = 0; i < samples; i++) {
+		src = buffer_read_frag_s16(source, i);
+		dest = buffer_write_frag_s16(sink, i);
 		*dest = *src;
 	}
 }
@@ -127,9 +145,13 @@ static int proc_module_copy(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
+	/* input available samples */
+	input_samples = source->avail / comp_sample_bytes(source->source);
+
 	if (cd->preload) {
 		/* if source buffer is fulfilled */
-		if (!source->free) {
+		if (source->avail >= process->ibs *
+		    PROC_MODULE_DEFAULT_PERIODS) {
 			/* end of preload state */
 			cd->preload = 0;
 			trace_proc_module("exit proc module preload");
@@ -139,9 +161,6 @@ static int proc_module_copy(struct comp_dev *dev)
 				PPL_STATUS_PATH_STOP : 0;
 		}
 	}
-
-	/* input available samples */
-	input_samples = source->avail / comp_sample_bytes(source->source);
 
 	if (input_samples < process->ibs) {
 		tracev_proc_module("proc_module_copy(), not enough input "
@@ -176,8 +195,18 @@ static int proc_module_copy(struct comp_dev *dev)
 
 	copy_bytes = copy_samples * comp_sample_bytes(dev);
 
-	/* TODO: now only for sample size = 4 bytes */
-	proc_module_process(source, sink, copy_samples);
+	switch (process->config.frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		proc_module_process_s16(source, sink, copy_samples);
+		break;
+	case SOF_IPC_FRAME_S24_4LE:
+	case SOF_IPC_FRAME_S32_LE:
+		proc_module_process_s32(source, sink, copy_samples);
+		break;
+	default:
+		trace_proc_module("proc_module_copy(): unsupported format");
+		return -EINVAL;
+	}
 
 #if PROC_MODULE_DEBUG_TRACES
 	trace_proc_module("proc_module_copy(), produce_bytes: %u",
@@ -210,6 +239,7 @@ static int proc_module_prepare(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	uint32_t out_sample_bytes;
+	uint32_t in_sample_bytes;
 	int ret;
 
 	trace_proc_module("proc_module_prepare()");
@@ -227,24 +257,42 @@ static int proc_module_prepare(struct comp_dev *dev)
 	sink = list_first_item(&dev->bsink_list, struct comp_buffer,
 			       source_list);
 
+	in_sample_bytes = process->ibs * comp_sample_bytes(dev);
 	out_sample_bytes = process->obs * comp_sample_bytes(dev);
 
 #if PROC_MODULE_DEBUG_TRACES
-	trace_proc_module("process->bs: %u", process->bs);
-	trace_proc_module("process->ibs: %u", process->ibs);
-	trace_proc_module("process->obs: %u", process->obs);
-	trace_proc_module("out_sample_bytes: %u", out_sample_bytes);
+	trace_proc_module("proc_module_prepare(): process->bs: %u",
+			  process->bs);
+	trace_proc_module("proc_module_prepare(): process->ibs: %u",
+			  process->ibs);
+	trace_proc_module("proc_module_prepare(): process->obs: %u",
+			  process->obs);
+	trace_proc_module("proc_module_prepare(): out_sample_bytes: %u",
+			  out_sample_bytes);
+	trace_proc_module("proc_module_prepare(): source->size: %u",
+			  source->size);
+	trace_proc_module("proc_module_prepare(): sink->size: %u",
+			  sink->size);
+	trace_proc_module("proc_module_prepare(): config->periods_source: %u",
+			  config->periods_source);
+	trace_proc_module("proc_module_prepare(): config->periods_sink: %u",
+			  config->periods_sink);
 #endif
 	cd->preload = 1;
 
-	/* set sink buffer size */
-	ret = comp_resize_sink_buffer(sink, out_sample_bytes,
-				      config->periods_sink);
-	if (ret < 0) {
-		trace_proc_module_error("proc_module_prepare() error: "
-					"comp_resize_sink_buffer() failed");
+	if (in_sample_bytes * PROC_MODULE_DEFAULT_PERIODS > source->size) {
+		trace_proc_module("proc_module_prepare(): in_sample_bytes * "
+				  "PROC_MODULE_DEFAULT_PERIODS > "
+				  "source->size");
 		comp_set_state(dev, COMP_TRIGGER_RESET);
-		return ret;
+		return -EINVAL;
+	}
+
+	if (out_sample_bytes * PROC_MODULE_DEFAULT_PERIODS > sink->size) {
+		trace_proc_module("proc_module_prepare(): out_sample_bytes * "
+				  "PROC_MODULE_DEFAULT_PERIODS > sink->size");
+		comp_set_state(dev, COMP_TRIGGER_RESET);
+		return -EINVAL;
 	}
 
 #if PROC_MODULE_DEBUG_TRACES
