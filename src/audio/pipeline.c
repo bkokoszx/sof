@@ -181,33 +181,6 @@ int pipeline_complete(struct pipeline *p, struct comp_dev *source,
 	return 0;
 }
 
-static int pipeline_comp_free(struct comp_dev *current, void *data, int dir)
-{
-	struct pipeline_data *ppl_data = data;
-
-	tracev_pipe("pipeline_comp_free(), current->comp.id = %u, dir = %u",
-		    current->comp.id, dir);
-
-	if (!comp_is_single_pipeline(current, ppl_data->start)) {
-		tracev_pipe("pipeline_comp_free(), "
-			    "current is from another pipeline");
-		return 0;
-	}
-
-	/* complete component free */
-	current->pipeline = NULL;
-
-	pipeline_for_each_comp(current, &pipeline_comp_free, data,
-			       NULL, dir);
-
-	/* disconnect source from buffer */
-	spin_lock(&current->lock);
-	list_item_del(comp_buffer_list(current, dir));
-	spin_unlock(&current->lock);
-
-	return 0;
-}
-
 /* pipelines must be inactive */
 int pipeline_free(struct pipeline *p)
 {
@@ -228,9 +201,6 @@ int pipeline_free(struct pipeline *p)
 	schedule_task_free(&p->pipe_task);
 
 	data.start = p->source_comp;
-
-	/* disconnect components */
-	pipeline_comp_free(p->source_comp, &data, PPL_DIR_DOWNSTREAM);
 
 	/* now free the pipeline */
 	rfree(p);
