@@ -56,6 +56,11 @@ if(NOT BUILD_LIBRARY)
 			detect_test.c
 		)
 	endif()
+	if(CONFIG_COMP_DSM)
+		add_local_sources(sof
+			dsm.c
+		)
+	endif()
 	return()
 endif()
 
