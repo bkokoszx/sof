@@ -64,6 +64,8 @@ int buffer_set_size(struct comp_buffer *buffer, uint32_t size)
 	void *new_ptr = NULL;
 	struct sof_ipc_buffer *desc = NULL;
 
+	trace_buffer("buffer_set_size(): size: %d", size);
+
 	/* validate request */
 	if (size == 0 || size > HEAP_BUFFER_SIZE) {
 		trace_buffer_error("resize error: size = %u is invalid", size);

@@ -355,6 +355,15 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	sad->sink_buf = list_first_item(&dev->bsink_list, struct comp_buffer,
 					source_list);
 
+	trace_smart_amp("smart_amp_prepare(): sad->feedback_buf->ipc_buffer.comp.id: %d", sad->feedback_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_prepare(): sad->feedback_buf->alloc_size: %d", sad->feedback_buf->alloc_size);
+
+	trace_smart_amp("smart_amp_prepare(): sad->source_buf->ipc_buffer.comp.id: %d", sad->source_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_prepare(): sad->source_buf->alloc_size: %d", sad->source_buf->alloc_size);
+
+	trace_smart_amp("smart_amp_prepare(): sad->sink_buf->ipc_buffer.comp.id: %d", sad->sink_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_prepare(): sad->sink_buf->alloc_size: %d", sad->sink_buf->alloc_size);
+
 	return 0;
 }
 
@@ -403,6 +412,15 @@ static int smart_amp_demux_prepare(struct comp_dev *dev)
 
 	sad->source_buf = list_first_item(&dev->bsource_list,
 					  struct comp_buffer, sink_list);
+
+	trace_smart_amp("smart_amp_demux_prepare(): sad->feedback_buf->ipc_buffer.comp.id: %d", sad->feedback_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_demux_prepare(): sad->feedback_buf->alloc_size: %d", sad->feedback_buf->alloc_size);
+
+	trace_smart_amp("smart_amp_demux_prepare(): sad->source_buf->ipc_buffer.comp.id: %d", sad->source_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_demux_prepare(): sad->source_buf->alloc_size: %d", sad->source_buf->alloc_size);
+
+	trace_smart_amp("smart_amp_demux_prepare(): sad->sink_buf->ipc_buffer.comp.id: %d", sad->sink_buf->ipc_buffer.comp.id);
+	trace_smart_amp("smart_amp_demux_prepare(): sad->sink_buf->alloc_size: %d", sad->sink_buf->alloc_size);
 
 	return 0;
 }

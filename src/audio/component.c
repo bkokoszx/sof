@@ -104,6 +104,8 @@ int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
 	struct comp_buffer *sinkb;
 	int ret = 0;
 
+	trace_comp("comp_set_sink_buffer()");
+
 	sinkb = list_first_item(&dev->bsink_list, struct comp_buffer,
 				source_list);
 
@@ -116,6 +118,11 @@ int comp_set_sink_buffer(struct comp_dev *dev, uint32_t period_bytes,
 			return ret;
 		}
 	} else if (sinkb->size < period_bytes * periods) {
+		trace_comp("comp_set_sink_buffer(): sinkb->ipc_buffer.comp.id: %d", sinkb->ipc_buffer.comp.id);
+		trace_comp("comp_set_sink_buffer(): sinkb->size: %d", sinkb->size);
+		trace_comp("comp_set_sink_buffer(): period_bytes: %d", period_bytes);
+		trace_comp("comp_set_sink_buffer(): periods: %d", periods);
+
 		trace_comp_error("comp_set_sink_buffer() error: "
 				 "sink buffer size is not sufficient");
 		ret = -EINVAL;

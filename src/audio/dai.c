@@ -239,6 +239,10 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes)
 	/* set up local and host DMA elems to reset values */
 	dai_config = COMP_GET_CONFIG(dev);
 	buffer_size = dai_config->periods_source * period_bytes;
+	
+	trace_dai_with_ids(dev, "dai_playback_params(): period_bytes: %d", period_bytes);
+	trace_dai_with_ids(dev, "dai_playback_params(): dai_config->periods_source: %d", dai_config->periods_source);
+	trace_dai_with_ids(dev, "dai_playback_params(): dd->dma_buffer->ipc_buffer.comp.id: %d", dd->dma_buffer->ipc_buffer.comp.id);
 
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
@@ -320,6 +324,10 @@ static int dai_capture_params(struct comp_dev *dev, uint32_t period_bytes)
 	dai_config = COMP_GET_CONFIG(dev);
 	buffer_size = dai_config->periods_sink * period_bytes;
 
+	trace_dai_with_ids(dev, "dai_capture_params(): period_bytes: %d", period_bytes);
+	trace_dai_with_ids(dev, "dai_capture_params(): dai_config->periods_source: %d", dai_config->periods_source);
+	trace_dai_with_ids(dev, "dai_capture_params(): dd->dma_buffer->ipc_buffer.comp.id: %d", dd->dma_buffer->ipc_buffer.comp.id);
+
 	/* resize the buffer if space is available to align with period size */
 	err = buffer_set_size(dd->dma_buffer, buffer_size);
 	if (err < 0) {
@@ -386,8 +394,12 @@ static int dai_params(struct comp_dev *dev)
 	/* for DAI, we should configure its frame_fmt from topology */
 	dev->params.frame_fmt = dconfig->frame_fmt;
 
+	trace_dai_with_ids(dev, "dai_params(): dev->params.frame_fmt: %d", dev->params.frame_fmt);
+
 	/* calculate period size based on config */
 	dd->frame_bytes = comp_frame_bytes(dev);
+
+	trace_dai_with_ids(dev, "dai_params(): dd->frame_bytes: %d", dd->frame_bytes);
 	if (!dd->frame_bytes) {
 		trace_dai_error_with_ids(dev, "dai_params() error: "
 					 "comp_frame_bytes() returned 0.");

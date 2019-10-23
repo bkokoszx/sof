@@ -589,6 +589,8 @@ static int host_params(struct comp_dev *dev)
 		hd->source = &hd->local;
 		hd->sink = &hd->host;
 	}
+	
+	trace_host_with_ids(dev, "host_params(): hd->dma_buffer->ipc_buffer.comp.id: %d", hd->dma_buffer->ipc_buffer.comp.id);
 
 	/* validate period count */
 	if (!period_count) {
@@ -607,6 +609,10 @@ static int host_params(struct comp_dev *dev)
 
 	/* resize the buffer if space is available to align with period size */
 	buffer_size = period_count * hd->period_bytes;
+
+	trace_host_with_ids(dev, "host_params(): period_count: %d", period_count);
+	trace_host_with_ids(dev, "host_params(): hd->period_bytes: %d", hd->period_bytes);
+
 	err = buffer_set_size(hd->dma_buffer, buffer_size);
 	if (err < 0) {
 		trace_host_error_with_ids(dev, "host_params() error:"

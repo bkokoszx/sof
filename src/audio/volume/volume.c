@@ -586,7 +586,7 @@ static int volume_prepare(struct comp_dev *dev)
 	int i;
 	int ret;
 
-	trace_volume("volume_prepare()");
+	trace_volume("volume_prepare(): dev->frames: %d", dev->frames);
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -601,13 +601,20 @@ static int volume_prepare(struct comp_dev *dev)
 	sinkb = list_first_item(&dev->bsink_list,
 				struct comp_buffer, source_list);
 
+	trace_volume("volume_prepare()");
+
 	/* get source data format and period bytes */
 	cd->source_format = comp_frame_fmt(sourceb->source);
 	source_period_bytes = comp_period_bytes(sourceb->source, dev->frames);
 
+	trace_volume("volume_prepare(): cd->source_format: %d", cd->source_format);
+	trace_volume("volume_prepare(): source_period_bytes: %d", source_period_bytes);
+
 	/* get sink data format and period bytes */
 	cd->sink_format = comp_frame_fmt(sinkb->sink);
 	sink_period_bytes = comp_period_bytes(sinkb->sink, dev->frames);
+	trace_volume("volume_prepare(): cd->source_format: %d", cd->source_format);
+	trace_volume("volume_prepare(): sink_period_bytes: %d", sink_period_bytes);
 
 	/* Rewrite params format for this component to match the host side. */
 	if (dev->params.direction == SOF_IPC_STREAM_PLAYBACK)
