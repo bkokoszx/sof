@@ -74,6 +74,9 @@ struct dai_data {
 	uint64_t *dai_pos;
 
 	uint64_t wallclock;	/* wall clock at stream start */
+
+	bool produce_silence; /* flag indicates whether dai should produce
+			       * silence (zeros) in case no input data*/
 };
 
 /* this is called by DMA driver every time descriptor has completed */
@@ -193,6 +196,8 @@ static struct comp_dev *dai_new(struct sof_ipc_comp *comp)
 	dd->dai_pos_blks = 0;
 	dd->xrun = 0;
 	dd->chan = NULL;
+	dd->produce_silence = true; /* in order to produce zeros in no data
+				     * case */
 
 	dev->state = COMP_STATE_READY;
 	return dev;
@@ -624,6 +629,77 @@ static void dai_report_xrun(struct comp_dev *dev, uint32_t bytes)
 	}
 }
 
+static int dai_fill_zeros_s16(struct comp_dev *dev, struct comp_buffer *buff,
+			      uint32_t frames)
+{
+	int16_t *dest;
+	int32_t i;
+	uint32_t channel;
+	uint32_t buff_frag = 0;
+
+	trace_dai("dai_fill_zeros_s16()");
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < buff->channels; channel++) {
+			dest = buffer_write_frag_s32(buff, buff_frag);
+			*dest = 0;
+			buff_frag++;
+		}
+	}
+
+	return 0;
+}
+
+static int dai_fill_zeros_s32(struct comp_dev *dev, struct comp_buffer *buff,
+			      uint32_t frames)
+{
+	int32_t *dest;
+	int32_t i;
+	uint32_t channel;
+	uint32_t buff_frag = 0;
+
+	trace_dai("dai_fill_zeros_s32()");
+
+	for (i = 0; i < frames; i++) {
+		for (channel = 0; channel < buff->channels; channel++) {
+			dest = buffer_write_frag_s32(buff, buff_frag);
+			*dest = 0;
+			buff_frag++;
+		}
+	}
+
+	return 0;
+}
+
+
+static int dai_produce_silence(struct comp_dev *dev, uint32_t frames)
+{
+	struct dai_data *dd = comp_get_drvdata(dev);
+	uint32_t produce_bytes;
+
+	trace_dai_with_ids(dev, "dai_produce_silence()");
+
+	switch (dd->frame_fmt) {
+	case SOF_IPC_FRAME_S16_LE:
+		dai_fill_zeros_s16(dev, dd->local_buffer, frames);
+		break;
+	case SOF_IPC_FRAME_S32_LE:
+		dai_fill_zeros_s32(dev, dd->local_buffer, frames);
+		break;
+	default:
+		trace_dai_error("dai_produce_silence() error: not supported frame_fmt");
+		return -EINVAL;
+		break;
+	}
+
+	produce_bytes = frames * frame_bytes(dd->frame_fmt,
+					     dd->local_buffer->channels);
+
+	comp_update_buffer_produce(dd->local_buffer, produce_bytes);
+
+	return 0;
+}
+
 /* copy and process stream data from source to sink buffers */
 static int dai_copy(struct comp_dev *dev)
 {
@@ -633,9 +709,11 @@ static int dai_copy(struct comp_dev *dev)
 	uint32_t copy_bytes = 0;
 	uint32_t src_samples;
 	uint32_t sink_samples;
+	uint32_t frame_size;
+	uint32_t avail_frames;
 	int ret = 0;
 
-	tracev_dai_with_ids(dev, "dai_copy()");
+	trace_dai_with_ids(dev, "dai_copy()");
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
@@ -655,11 +733,19 @@ static int dai_copy(struct comp_dev *dev)
 		src_samples = avail_bytes / sample_bytes(dd->frame_fmt);
 		sink_samples = dd->local_buffer->free /
 			buffer_sample_bytes(dd->local_buffer);
+
+		if (dd->produce_silence && !src_samples &&
+		    dd->start_position == dev->position) {
+			frame_size = frame_bytes(dd->frame_fmt, dd->local_buffer->channels);
+			avail_frames = dd->local_buffer->free / frame_size;
+			dai_produce_silence(dev, MIN(dev->frames, avail_frames));
+		}
+
 		copy_bytes = MIN(src_samples, sink_samples) *
 			sample_bytes(dd->frame_fmt);
 	}
 
-	tracev_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
+	trace_dai_with_ids(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
 	/* return if it's not stream start */
 	if (!copy_bytes && dd->start_position != dev->position)
