@@ -12,13 +12,27 @@
 
 static const struct comp_driver comp_smart_amp;
 
+int source_channels_maps[SMART_AMP_MODE_AMOUNT][SMART_AMP_MAX_STREAM_CHAN] = {
+	{1, 0, 1, 0, 1, 0, 1, 0},	// SMART_AMP_MODE_PASSTHROUGH
+	{0, 0, 1, 1, -1, -1, -1, -1}	// SMART_AMP_MODE_PROC_FEEDBACK
+};
+
+int feedback_channels_maps[SMART_AMP_MODE_AMOUNT][SMART_AMP_MAX_STREAM_CHAN] = {
+	{-1, -1, -1, -1, -1, -1, -1, -1},	// SMART_AMP_MODE_PASSTHROUGH
+	{-1, -1, -1, -1, 0, 1, 2, 3}		// SMART_AMP_MODE_PROC_FEEDBACK
+};
+
 struct smart_amp_data {
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
 
+	uint32_t mode;
+
 	uint32_t in_channels;
 	uint32_t out_channels;
+	int *source_channel_map;
+	int *feedback_channel_map;
 };
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
@@ -57,8 +71,14 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, sad);
 
+	//sad->mode = SMART_AMP_MODE_PASSTHROUGH;
+	sad->mode = SMART_AMP_MODE_PROC_FEEDBACK;
+
 	sad->in_channels = 2;
-	sad->out_channels = 4;
+	sad->out_channels = 8;
+
+	sad->source_channel_map = &source_channels_maps[sad->mode][0];
+	sad->feedback_channel_map = &feedback_channels_maps[sad->mode][0];
 
 	dev->state = COMP_STATE_READY;
 
@@ -137,68 +157,59 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 static int smart_amp_process_s16(struct comp_dev *dev,
 				 const struct audio_stream *source,
 				 const struct audio_stream *sink,
-				 uint32_t frames)
+				 uint32_t frames, int *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int16_t *src;
 	int16_t *dest;
 	uint32_t in_buff_frag = 0;
 	uint32_t out_buff_frag = 0;
-	int in_ch;
 	int i;
 	int j;
-	int scale;
-
-	scale = sad->out_channels / sad->in_channels;
 
 	comp_info(dev, "smart_amp_process_s16()");
 
 	for (i = 0; i < frames; i++) {
-		for(in_ch = 0; in_ch < sad->in_channels; in_ch++) {
-			src = audio_stream_read_frag_s16(source, in_buff_frag);
-			for (j = 0 ; j < scale; j++) {
+		for (j = 0 ; j < sad->out_channels; j++) {
+			if (chan_map[j] != -1) {
+				src = audio_stream_read_frag_s16(source, in_buff_frag + chan_map[j]);	
 				dest = audio_stream_write_frag_s16(sink, out_buff_frag);
-
 				*dest = *src;
-				out_buff_frag++;
 			}
-			in_buff_frag++;
+			out_buff_frag++;
 		}
-	}
 
+		in_buff_frag += source->channels;
+	}
 	return 0;
 }
 
 static int smart_amp_process_s32(struct comp_dev *dev,
 				 const struct audio_stream *source,
 				 const struct audio_stream *sink,
-				 uint32_t frames)
+				 uint32_t frames, int *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int32_t *src;
 	int32_t *dest;
 	uint32_t in_buff_frag = 0;
 	uint32_t out_buff_frag = 0;
-	int in_ch;
 	int i;
 	int j;
-	int scale;
-
-	scale = sad->out_channels / sad->in_channels;
 
 	comp_info(dev, "smart_amp_process_s32()");
 
 	for (i = 0; i < frames; i++) {
-		for(in_ch = 0; in_ch < sad->in_channels; in_ch++) {
-			src = audio_stream_read_frag_s32(source, in_buff_frag);
-			for (j = 0 ; j < scale; j++) {
+		for (j = 0 ; j < sad->out_channels; j++) {
+			if (chan_map[j] != -1) {
+				src = audio_stream_read_frag_s32(source, in_buff_frag + chan_map[j]);	
 				dest = audio_stream_write_frag_s32(sink, out_buff_frag);
-
 				*dest = *src;
-				out_buff_frag++;
 			}
-			in_buff_frag++;
+			out_buff_frag++;
 		}
+		//in_buff_frag += sad->in_channels;
+		in_buff_frag += source->channels;
 	}
 
 	return 0;
@@ -206,17 +217,18 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 
 static int smart_amp_process(struct comp_dev *dev, uint32_t frames,
 			     struct comp_buffer *source,
-			     struct comp_buffer *sink)
+			     struct comp_buffer *sink, int *chan_map)
 {
 	int ret = 0;
 
 	switch (source->stream.frame_fmt) {
 	case SOF_IPC_FRAME_S16_LE:
 		ret = smart_amp_process_s16(dev, &source->stream, &sink->stream,
-					    frames);
+					    frames, chan_map);
 		break;
 	case SOF_IPC_FRAME_S32_LE:
-		ret = smart_amp_process_s32(dev, &source->stream, &sink->stream, frames);
+		ret = smart_amp_process_s32(dev, &source->stream, &sink->stream,
+					    frames, chan_map);
 
 		break;
 	default:
@@ -227,23 +239,14 @@ static int smart_amp_process(struct comp_dev *dev, uint32_t frames,
 	return ret;
 }
 
-static int smart_amp_process_feedback_data(struct comp_buffer *buf,
-					   uint32_t samples)
-{
-	(void)buf;
-	(void)samples;
-
-	/* here it is possible to process samples from feedback buf */
-
-	return 0;
-}
-
 static int smart_amp_copy(struct comp_dev *dev)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
+	uint32_t feedback_bytes;
+	uint32_t feedback_frames;
 	int ret = 0;
 
 	comp_info(dev, "smart_amp_copy()");
@@ -257,28 +260,28 @@ static int smart_amp_copy(struct comp_dev *dev)
 		audio_stream_frame_bytes(&sad->sink_buf->stream);
 
 	/* process data */
-	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf);
+	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
+			  sad->source_channel_map);
 
-	/* sink and source buffer pointers update */
-	comp_update_buffer_produce(sad->sink_buf, sink_bytes);
+	/* source buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
 
-	/* from feedback buffer we should consume as much data as we consume
-	 * from source buffer.
-	 */
-	/*if (sad->feedback_buf->avail < source_bytes) {
-		trace_smart_amp_with_ids(dev, "smart_amp_copy(): not enough "
-					 "data in feedback buffer");
+	/* processing feedback */
+	feedback_frames = sad->feedback_buf->stream.avail /
+		audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-		return ret;
-	}*/
+	avail_frames = MIN(avail_frames, feedback_frames);
+
+	/* available bytes and samples calculation */
+	feedback_bytes = avail_frames *
+		audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
 	comp_info(dev, "smart_amp_copy(): processing %d feedback bytes",
-		  source_bytes);
-	smart_amp_process_feedback_data(sad->feedback_buf,
-					sad->feedback_buf->stream.avail);
-	comp_update_buffer_consume(sad->feedback_buf,
-				   sad->feedback_buf->stream.avail);
+		  feedback_bytes);
+	smart_amp_process(dev, avail_frames, sad->feedback_buf, sad->sink_buf,
+			  sad->feedback_channel_map);
+	comp_update_buffer_produce(sad->sink_buf, sink_bytes);
+	comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 
 	return ret;
 }
