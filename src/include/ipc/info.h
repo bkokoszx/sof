@@ -122,7 +122,7 @@ struct sof_ipc_cc_version {
 
 	char name[16]; /* null terminated compiler name */
 	char optim[4]; /* null terminated compiler -O flag value */
-	char desc[]; /* null terminated compiler description */
+	char desc[24]; /* null terminated compiler description */
 } __attribute__((packed));
 
 /* extended data: Probe setup */
