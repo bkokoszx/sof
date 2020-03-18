@@ -71,8 +71,8 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, sad);
 
-	//sad->mode = SMART_AMP_MODE_PASSTHROUGH;
-	sad->mode = SMART_AMP_MODE_PROC_FEEDBACK;
+	sad->mode = SMART_AMP_MODE_PASSTHROUGH;
+	//sad->mode = SMART_AMP_MODE_PROC_FEEDBACK;
 
 	sad->in_channels = 2;
 	sad->out_channels = 8;
@@ -224,6 +224,7 @@ static int smart_amp_process(struct comp_dev *dev, uint32_t frames,
 		ret = smart_amp_process_s16(dev, &source->stream, &sink->stream,
 					    frames, chan_map);
 		break;
+	case SOF_IPC_FRAME_S24_4LE:
 	case SOF_IPC_FRAME_S32_LE:
 		ret = smart_amp_process_s32(dev, &source->stream, &sink->stream,
 					    frames, chan_map);
