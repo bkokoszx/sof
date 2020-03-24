@@ -228,11 +228,13 @@ static void comp_update_params(uint32_t flag,
 
 	if (flag & BUFF_PARAMS_CHANNELS) {
 		trace_event(TRACE_CLASS_COMP, "comp_update_params: BUFF_PARAMS_CHANNELS: buffer->stream.channels: %d", buffer->stream.channels);
-		params->channels = buffer->stream.channels;
+		if (buffer->stream.channels)
+			params->channels = buffer->stream.channels;
 	}
 
 	if (flag & BUFF_PARAMS_RATE)
-		params->rate = buffer->stream.rate;
+		if (buffer->stream.rate)
+			params->rate = buffer->stream.rate;
 }
 
 int comp_verify_params(struct comp_dev *dev, uint32_t flag,
