@@ -466,7 +466,7 @@ static int host_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "host_params()");
+	comp_info(dev, "host_params()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		hd->local_buffer = list_first_item(&dev->bsink_list,
@@ -620,7 +620,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "host_prepare()");
+	comp_info(dev, "host_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)

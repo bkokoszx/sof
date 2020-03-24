@@ -335,7 +335,7 @@ static int volume_params(struct comp_dev *dev,
 {
 	int err;
 
-	comp_dbg(dev, "volume_params()");
+	comp_info(dev, "volume_params()");
 
 	err = volume_verify_params(dev, params);
 	if (err < 0) {
@@ -709,7 +709,7 @@ static int volume_prepare(struct comp_dev *dev)
 	int i;
 	int ret;
 
-	comp_dbg(dev, "volume_prepare()");
+	comp_info(dev, "volume_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)

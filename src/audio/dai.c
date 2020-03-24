@@ -395,7 +395,7 @@ static int dai_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
+	comp_info(dev, "dai_params()");
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {
@@ -488,7 +488,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_dbg(dev, "dai_prepare()");
+	comp_info(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)

@@ -129,6 +129,8 @@ static inline vol_scale_func vol_get_processing_function(struct comp_dev *dev)
 
 	/* map the volume function for source and sink buffers */
 	for (i = 0; i < func_count; i++) {
+		comp_info(dev, "vol_get_processing_function(): sinkb->stream.frame_fmt: %d", sinkb->stream.frame_fmt);
+		comp_info(dev, "vol_get_processing_function(): func_map[%d].frame_fmt: %d", i, func_map[i].frame_fmt);
 		if (sinkb->stream.frame_fmt != func_map[i].frame_fmt)
 			continue;
 
