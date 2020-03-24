@@ -241,7 +241,15 @@ static int dai_verify_params(struct comp_dev *dev,
 {
 	struct sof_ipc_stream_params hw_params;
 
+	comp_info(dev, "dai_verify_params(): params->channels: %d", params->channels);
+	comp_info(dev, "dai_verify_params(): params->rate: %d", params->rate);
+	comp_info(dev, "dai_verify_params(): params->frame_fmt: %d", params->frame_fmt);
+
 	dai_comp_get_hw_params(dev, &hw_params, params->direction);
+
+	comp_info(dev, "dai_verify_params(): hw_params.channels: %d", hw_params.channels);
+	comp_info(dev, "dai_verify_params(): hw_params.frame_fmt: %d", hw_params.frame_fmt);
+	comp_info(dev, "dai_verify_params(): hw_params.rate: %d", hw_params.rate);
 
 	/* checks whether pcm parameters match hardware DAI parameter set
 	 * during dai_set_config(). If hardware parameter is equal to 0, it

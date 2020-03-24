@@ -187,6 +187,9 @@ static int mux_params(struct comp_dev *dev,
 	int err;
 
 	comp_info(dev, "mux_params()");
+	comp_info(dev, "mux_params(): params->channels: %d", params->channels);
+	comp_info(dev, "mux_params(): params->rate: %d", params->rate);
+	comp_info(dev, "mux_params(): params->frame_fmt: %d", params->frame_fmt);
 
 	err = mux_verify_params(dev, params);
 	if (err < 0) {

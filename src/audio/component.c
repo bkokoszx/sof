@@ -226,8 +226,10 @@ static void comp_update_params(uint32_t flag,
 	if (flag & BUFF_PARAMS_BUFFER_FMT)
 		params->buffer_fmt = buffer->buffer_fmt;
 
-	if (flag & BUFF_PARAMS_CHANNELS)
+	if (flag & BUFF_PARAMS_CHANNELS) {
+		trace_event(TRACE_CLASS_COMP, "comp_update_params: BUFF_PARAMS_CHANNELS: buffer->stream.channels: %d", buffer->stream.channels);
 		params->channels = buffer->stream.channels;
+	}
 
 	if (flag & BUFF_PARAMS_RATE)
 		params->rate = buffer->stream.rate;
@@ -250,6 +252,9 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 		comp_err(dev, "comp_verify_params() error: !params");
 		return -EINVAL;
 	}
+
+	comp_info(dev, "comp_verify_params()");
+	comp_info(dev, "comp_verify_params(): flag: %d", flag);
 
 	source_list = comp_buffer_list(dev, PPL_DIR_UPSTREAM);
 	sink_list = comp_buffer_list(dev, PPL_DIR_DOWNSTREAM);
