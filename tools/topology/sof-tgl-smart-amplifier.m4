@@ -97,10 +97,10 @@ PCM_DUPLEX_ADD(Port1, 0, PIPELINE_PCM_1, PIPELINE_PCM_2)
 
 #SSP SSP_INDEX (ID: 0)
 DAI_CONFIG(SSP, SSP_INDEX, 0, SSP_NAME,
-	SSP_CONFIG(I2S, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
-		      SSP_CLOCK(bclk, 9600000, codec_slave),
+	SSP_CONFIG(DSP_A, SSP_CLOCK(mclk, 38400000, codec_mclk_in),
+		      SSP_CLOCK(bclk, 12288000, codec_slave),
 		      SSP_CLOCK(fsync, 48000, codec_slave),
-		      SSP_TDM(8, 25, 15, 255),
-		      SSP_CONFIG_DATA(SSP, SSP_INDEX, 24, 0, SSP_QUIRK_LBM)))
+		      SSP_TDM(8, 32, 15, 255),
+		      SSP_CONFIG_DATA(SSP, SSP_INDEX, 32, 0, SSP_QUIRK_LBM)))
 
 DEBUG_END
