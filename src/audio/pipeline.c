@@ -803,6 +803,8 @@ static int pipeline_copy(struct pipeline *p)
 	uint32_t dir;
 	int ret = 0;
 
+	pipe_info(p, "pipeline_copy()");
+
 	if (p->source_comp->direction == SOF_IPC_STREAM_PLAYBACK) {
 		dir = PPL_DIR_UPSTREAM;
 		start = p->sink_comp;
@@ -973,7 +975,7 @@ static enum task_state pipeline_task(void *arg)
 	struct pipeline *p = arg;
 	int err;
 
-	pipe_dbg(p, "pipeline_task()");
+	pipe_info(p, "pipeline_task()");
 
 	/* are we in xrun ? */
 	if (p->xrun_bytes) {

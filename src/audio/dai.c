@@ -387,7 +387,7 @@ static int dai_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "dai_params()");
+	comp_info(dev, "dai_params()");
 
 	err = dai_verify_params(dev, params);
 	if (err < 0) {
@@ -450,8 +450,13 @@ static int dai_params(struct comp_dev *dev,
 		return -EINVAL;
 	}
 
+	comp_info(dev, "dai_params(): dev->frames: %d", dev->frames);
+	comp_info(dev, "dai_params(): period_count: %d", period_count);
+
 	/* calculate DMA buffer size */
 	buffer_size = ALIGN_UP(period_count * period_bytes, align);
+
+	comp_info(dev, "dai_params(): buffer_size: %d", buffer_size);
 
 	/* alloc DMA buffer or change its size if exists */
 	if (dd->dma_buffer) {
@@ -480,7 +485,7 @@ static int dai_prepare(struct comp_dev *dev)
 	struct dai_data *dd = comp_get_drvdata(dev);
 	int ret = 0;
 
-	comp_dbg(dev, "dai_prepare()");
+	comp_info(dev, "dai_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -662,7 +667,8 @@ static int dai_copy(struct comp_dev *dev)
 	int ret = 0;
 	uint32_t flags = 0;
 
-	comp_dbg(dev, "dai_copy()");
+	comp_info(dev, "dai_copy(): dd->local_buffer->stream.size: %d", dd->local_buffer->stream.size);
+	comp_info(dev, "dai_copy(): dd->local_buffer->stream.avail: %d", dd->local_buffer->stream.avail);
 
 	/* get data sizes from DMA */
 	ret = dma_get_data_size(dd->chan, &avail_bytes, &free_bytes);
@@ -690,7 +696,7 @@ static int dai_copy(struct comp_dev *dev)
 
 	buffer_unlock(dd->local_buffer, flags);
 
-	comp_dbg(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
+	comp_info(dev, "dai_copy(), copy_bytes = 0x%x", copy_bytes);
 
 	/* return if it's not stream start */
 	if (!copy_bytes && dd->start_position != dev->position)

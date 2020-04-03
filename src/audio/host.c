@@ -216,7 +216,9 @@ static void host_dma_cb(void *arg, enum notify_id type, void *data)
 	struct host_data *hd = comp_get_drvdata(dev);
 	uint32_t bytes = next->elem.size;
 
-	comp_cl_dbg(&comp_host, "host_dma_cb() %p", (uintptr_t)&comp_host);
+	comp_cl_info(&comp_host, "host_dma_cb() %p", (uintptr_t)&comp_host);
+	
+	comp_cl_info(&comp_host, "host_dma_cb(): bytes: %d", bytes);
 
 	/* update position */
 	host_update_position(dev, bytes);
@@ -466,7 +468,7 @@ static int host_params(struct comp_dev *dev,
 	uint32_t align;
 	int err;
 
-	comp_dbg(dev, "host_params()");
+	comp_info(dev, "host_params()");
 
 	if (dev->direction == SOF_IPC_STREAM_PLAYBACK)
 		hd->local_buffer = list_first_item(&dev->bsink_list,
@@ -620,7 +622,7 @@ static int host_prepare(struct comp_dev *dev)
 	struct host_data *hd = comp_get_drvdata(dev);
 	int ret;
 
-	comp_dbg(dev, "host_prepare()");
+	comp_info(dev, "host_prepare()");
 
 	ret = comp_set_state(dev, COMP_TRIGGER_PREPARE);
 	if (ret < 0)
@@ -765,7 +767,7 @@ static int host_copy(struct comp_dev *dev)
 	uint32_t flags = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "host_copy()");
+	comp_info(dev, "host_copy()");
 
 	if (dev->state != COMP_STATE_ACTIVE)
 		return 0;

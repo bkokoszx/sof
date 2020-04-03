@@ -307,7 +307,7 @@ static int demux_copy(struct comp_dev *dev)
 	uint32_t sinks_bytes[MUX_MAX_STREAMS] = { 0 };
 	uint32_t flags = 0;
 
-	comp_dbg(dev, "demux_copy()");
+	comp_info(dev, "demux_copy()");
 
 	if (!cd->demux) {
 		comp_err(dev, "demux_copy(): no demux processing function for component.");
@@ -347,6 +347,10 @@ static int demux_copy(struct comp_dev *dev)
 		avail = audio_stream_avail_frames(&source->stream,
 						  &sinks[i]->stream);
 		frames = MIN(frames, avail);
+		
+		comp_info(dev, "demux_copy(): sinks[i]->id: %d", sinks[i]->id);
+		comp_info(dev, "demux_copy(): avail: %d", avail);
+		comp_info(dev, "demux_copy(): frames: %d", frames);
 		buffer_unlock(sinks[i], flags);
 	}
 

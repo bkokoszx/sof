@@ -249,6 +249,12 @@ static int smart_amp_copy(struct comp_dev *dev)
 	int ret = 0;
 
 	comp_info(dev, "smart_amp_copy()");
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.channels: %d", sad->feedback_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.frame_fmt: %d", sad->feedback_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.channels: %d", sad->source_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.frame_fmt: %d", sad->source_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.channels: %d", sad->sink_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.frame_fmt: %d", sad->sink_buf->stream.frame_fmt);
 
 	/* available bytes and samples calculation */
 	avail_frames = audio_stream_avail_frames(&sad->source_buf->stream,
@@ -257,6 +263,10 @@ static int smart_amp_copy(struct comp_dev *dev)
 		audio_stream_frame_bytes(&sad->source_buf->stream);
 	sink_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->sink_buf->stream);
+
+	comp_info(dev, "smart_amp_copy(): avail_frames: %d", avail_frames);
+	comp_info(dev, "smart_amp_copy(): source_bytes: %d", source_bytes);
+	comp_info(dev, "smart_amp_copy(): sink_bytes: %d", sink_bytes);
 
 	/* process data */
 	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
@@ -274,6 +284,9 @@ static int smart_amp_copy(struct comp_dev *dev)
 	/* available bytes and samples calculation */
 	feedback_bytes = avail_frames *
 		audio_stream_frame_bytes(&sad->feedback_buf->stream);
+
+	comp_info(dev, "smart_amp_copy(): feedback_frames: %d", feedback_frames);
+	comp_info(dev, "smart_amp_copy(): avail_frames: %d", avail_frames);
 
 	comp_info(dev, "smart_amp_copy(): processing %d feedback bytes",
 		  feedback_bytes);
@@ -333,6 +346,10 @@ static int smart_amp_prepare(struct comp_dev *dev)
 
 	sad->feedback_buf->stream.channels = 8;
 	sad->feedback_buf->stream.frame_fmt = 2;
+
+	comp_info(dev, "smart_amp_prepare(): sad->feedback_buf->stream.size: %d", sad->feedback_buf->stream.size);
+	comp_info(dev, "smart_amp_prepare(): sad->source_buf->stream.size: %d", sad->source_buf->stream.size);
+	comp_info(dev, "smart_amp_prepare(): sad->sink_buf->stream.size: %d", sad->sink_buf->stream.size);
 
 	return 0;
 }
