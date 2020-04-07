@@ -243,6 +243,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	uint32_t avail_passthrough_frames;
 	uint32_t avail_feedback_frames;
+	uint32_t avail_frames;
 	uint32_t source_bytes;
 	uint32_t sink_bytes;
 	uint32_t feedback_bytes;
@@ -260,41 +261,50 @@ static int smart_amp_copy(struct comp_dev *dev)
 	/* available bytes and samples calculation */
 	avail_passthrough_frames = audio_stream_avail_frames(&sad->source_buf->stream,
 						 &sad->sink_buf->stream);
-	source_bytes = avail_passthrough_frames *
-		audio_stream_frame_bytes(&sad->source_buf->stream);
-	sink_bytes = avail_passthrough_frames *
-		audio_stream_frame_bytes(&sad->sink_buf->stream);
 
-	/* feedback */
-	feedback_frames = sad->feedback_buf->stream.avail /
-		audio_stream_frame_bytes(&sad->feedback_buf->stream);
-
-	avail_feedback_frames = MIN(avail_passthrough_frames, feedback_frames);
-
-	/* available bytes and samples calculation */
-	feedback_bytes = avail_feedback_frames *
-		audio_stream_frame_bytes(&sad->feedback_buf->stream);
+	avail_frames = avail_passthrough_frames;
 
 	comp_info(dev, "smart_amp_copy(): avail_passthrough_frames: %d", avail_passthrough_frames);
+
+	if (sad->feedback_buf->source->state == dev->state) {
+		/* feedback */
+		avail_feedback_frames = sad->feedback_buf->stream.avail /
+			audio_stream_frame_bytes(&sad->feedback_buf->stream);
+
+		avail_frames = MIN(avail_passthrough_frames, avail_feedback_frames);
+
+		feedback_bytes = avail_frames *
+			audio_stream_frame_bytes(&sad->feedback_buf->stream);
+
+		comp_info(dev, "smart_amp_copy(): feedback_frames: %d", feedback_frames);
+		comp_info(dev, "smart_amp_copy(): avail_feedback_frames: %d", avail_feedback_frames);
+		comp_info(dev, "smart_amp_copy(): processing %d feedback bytes",
+		  	feedback_bytes);
+
+		smart_amp_process(dev, avail_frames, sad->feedback_buf, sad->sink_buf,
+			  sad->feedback_channel_map);
+
+		comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
+	}
+
+	/* bytes calculation */
+	source_bytes = avail_frames *
+		audio_stream_frame_bytes(&sad->source_buf->stream);
+	sink_bytes = avail_frames *
+		audio_stream_frame_bytes(&sad->sink_buf->stream);
+
+	comp_info(dev, "smart_amp_copy(): avail_frames: %d", avail_frames);
 	comp_info(dev, "smart_amp_copy(): source_bytes: %d", source_bytes);
 	comp_info(dev, "smart_amp_copy(): sink_bytes: %d", sink_bytes);
 
 	/* process data */
-	smart_amp_process(dev, avail_passthrough_frames, sad->source_buf, sad->sink_buf,
+	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
 			  sad->source_channel_map);
 
 	/* source buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
 
-	comp_info(dev, "smart_amp_copy(): feedback_frames: %d", feedback_frames);
-	comp_info(dev, "smart_amp_copy(): avail_feedback_frames: %d", avail_feedback_frames);
-	comp_info(dev, "smart_amp_copy(): processing %d feedback bytes",
-		  feedback_bytes);
-
-	smart_amp_process(dev, avail_feedback_frames, sad->feedback_buf, sad->sink_buf,
-			  sad->feedback_channel_map);
 	comp_update_buffer_produce(sad->sink_buf, sink_bytes);
-	comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 
 	return ret;
 }
