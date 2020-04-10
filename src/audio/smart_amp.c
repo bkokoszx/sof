@@ -12,6 +12,7 @@
 
 static const struct comp_driver comp_smart_amp;
 
+/*
 int source_channels_maps[SMART_AMP_MODE_AMOUNT][SMART_AMP_MAX_STREAM_CHAN] = {
 	{1, 0, 1, 0, 1, 0, 1, 0},	// SMART_AMP_MODE_PASSTHROUGH
 	{0, 0, 1, 1, -1, -1, -1, -1},	// SMART_AMP_MODE_PROC_FEEDBACK
@@ -22,19 +23,17 @@ int feedback_channels_maps[SMART_AMP_MODE_AMOUNT][SMART_AMP_MAX_STREAM_CHAN] = {
 	{-1, -1, -1, -1, -1, -1, -1, -1},	// SMART_AMP_MODE_PASSTHROUGH
 	{-1, -1, -1, -1, 0, 1, 2, 3},		// SMART_AMP_MODE_PROC_FEEDBACK
 	{-1, -1, 0, 1, -1, -1, -1, -1}		// SMART_AMP_MODE_NOCODEC_FEEDBACK
-};
+}; */
 
 struct smart_amp_data {
+	struct sof_smart_amp_config config;
+
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
 	struct comp_buffer *sink_buf; /**< sink buffer */
 
-	uint32_t mode;
-
 	uint32_t in_channels;
 	uint32_t out_channels;
-	int *source_channel_map;
-	int *feedback_channel_map;
 };
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
@@ -45,6 +44,8 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	struct sof_ipc_comp_process *ipc_sa =
 		(struct sof_ipc_comp_process *)comp;
 	struct smart_amp_data *sad;
+	struct sof_smart_amp_config *cfg;
+	size_t bs;
 
 	comp_cl_info(&comp_smart_amp, "smart_amp_new()");
 
@@ -73,16 +74,75 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 
 	comp_set_drvdata(dev, sad);
 
+	cfg = (struct sof_smart_amp_config *)ipc_sa->data;
+	bs = ipc_sa->size;
+
+	if ((bs > 0) && (bs < sizeof(struct sof_smart_amp_config))) {
+		comp_err(dev, "smart_amp_new(): failed to apply config");
+
+		if (sad)
+			rfree(sad);
+		rfree(sad);
+		return NULL;
+	}
+
+	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
+
 	//sad->mode = SMART_AMP_MODE_PASSTHROUGH;
 	//sad->mode = SMART_AMP_MODE_PROC_FEEDBACK;
-	sad->mode = SMART_AMP_MODE_NOCODEC_FEEDBACK;
+	//sad->mode = SMART_AMP_MODE_NOCODEC_FEEDBACK;
 
-	sad->source_channel_map = &source_channels_maps[sad->mode][0];
-	sad->feedback_channel_map = &feedback_channels_maps[sad->mode][0];
+	//sad->source_channel_map = &source_channels_maps[sad->mode][0];
+	//sad->feedback_channel_map = &feedback_channels_maps[sad->mode][0];
 
 	dev->state = COMP_STATE_READY;
 
 	return dev;
+}
+
+static int smart_amp_set_config(struct comp_dev *dev,
+				struct sof_ipc_ctrl_data *cdata)
+{
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
+	struct sof_smart_amp_config *cfg;
+	size_t bs;
+
+	comp_info(dev, "smart_amp_set_config()");
+
+	/* Copy new config, find size from header */
+	cfg = (struct sof_smart_amp_config *)cdata->data->data;
+	bs = cfg->size;
+
+	comp_info(dev, "smart_amp_set_config(), blob size = %u", bs);
+
+	if (bs != sizeof(struct sof_smart_amp_config)) {
+		comp_err(dev, "smart_amp_set_config(): invalid blob size");
+		// return -EINVAL;
+	}
+
+	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, sizeof(struct sof_smart_amp_config));
+
+	return 0;
+}
+
+
+/* used to pass standard and bespoke commands (with data) to component */
+static int smart_amp_cmd(struct comp_dev *dev, int cmd, void *data,
+			 int max_data_size)
+{
+	struct sof_ipc_ctrl_data *cdata = data;
+
+	comp_info(dev, "smart_amp_cmd()");
+
+	comp_info(dev, "smart_amp_cmd(): cmd: %d", cmd);
+
+	switch (cmd) {
+	case COMP_CMD_SET_DATA:
+		return smart_amp_set_config(dev, cdata);
+	default:
+		//return -EINVAL;
+		return 0;
+	}
 }
 
 static void smart_amp_free(struct comp_dev *dev)
@@ -157,7 +217,7 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 static int smart_amp_process_s16(struct comp_dev *dev,
 				 const struct audio_stream *source,
 				 const struct audio_stream *sink,
-				 uint32_t frames, int *chan_map)
+				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int16_t *src;
@@ -186,7 +246,7 @@ static int smart_amp_process_s16(struct comp_dev *dev,
 static int smart_amp_process_s32(struct comp_dev *dev,
 				 const struct audio_stream *source,
 				 const struct audio_stream *sink,
-				 uint32_t frames, int *chan_map)
+				 uint32_t frames, int8_t *chan_map)
 {
 	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int32_t *src;
@@ -215,7 +275,7 @@ static int smart_amp_process_s32(struct comp_dev *dev,
 
 static int smart_amp_process(struct comp_dev *dev, uint32_t frames,
 			     struct comp_buffer *source,
-			     struct comp_buffer *sink, int *chan_map)
+			     struct comp_buffer *sink, int8_t *chan_map)
 {
 	int ret = 0;
 
@@ -260,7 +320,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	/* process data */
 	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
-			  sad->source_channel_map);
+			  sad->config.source_ch_map);
 
 	/* source buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
@@ -278,7 +338,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	comp_info(dev, "smart_amp_copy(): processing %d feedback bytes",
 		  feedback_bytes);
 	smart_amp_process(dev, avail_frames, sad->feedback_buf, sad->sink_buf,
-			  sad->feedback_channel_map);
+			  sad->config.feedback_ch_map);
 	comp_update_buffer_produce(sad->sink_buf, sink_bytes);
 	comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 
@@ -344,6 +404,7 @@ static const struct comp_driver comp_smart_amp = {
 		.free = smart_amp_free,
 		.params = smart_amp_params,
 		.prepare = smart_amp_prepare,
+		.cmd = smart_amp_cmd,
 		.trigger = smart_amp_trigger,
 		.copy = smart_amp_copy,
 		.reset = smart_amp_reset,
