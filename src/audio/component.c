@@ -326,6 +326,138 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 	return 0;
 }
 
+void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model)
+{
+	if (model->data) {
+		rfree(model->data);
+		model->data = NULL;
+		model->data_size = 0;
+		model->crc = 0;
+		model->data_pos = 0;
+	}
+}
+
+int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
+			  uint32_t size)
+{
+	if (!size)
+		return 0;
+
+	comp_free_model_data(dev, model);
+
+	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
+
+	if (!model->data) {
+		comp_err(dev, "comp_alloc_model_data(): model->data rballoc failed");
+		return -ENOMEM;
+	}
+
+	bzero(model->data, size);
+	model->data_size = size;
+	model->data_pos = 0;
+	model->crc = 0;
+
+	return 0;
+}
+
+int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata)
+{
+	bool done = false;
+	int ret = 0;
+
+	comp_dbg(dev, "comp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
+		 cdata->msg_index, cdata->num_elems,
+		 cdata->elems_remaining);
+
+	if (!cdata->msg_index) {
+		ret = comp_alloc_model_data(dev, model, cdata->data->size);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (!model->data) {
+		comp_err(dev, "comp_set_model(): buffer not allocated");
+		return -EINVAL;
+	}
+
+	if (!cdata->elems_remaining) {
+		if (cdata->num_elems + model->data_pos < model->data_size) {
+			comp_err(dev, "comp_set_model(): not enough data to fill the buffer");
+			// TODO: handle this situation
+
+			return -EINVAL;
+		}
+
+		done = true;
+		comp_info(dev, "comp_set_model() final packet received");
+	}
+
+	if (cdata->num_elems > model->data_size - model->data_pos) {
+		comp_err(dev, "comp_set_model(): too much data");
+		return -EINVAL;
+	}
+
+	ret = memcpy_s((char *)model->data + model->data_pos,
+		       model->data_size - model->data_pos,
+		       cdata->data->data, cdata->num_elems);
+	assert(!ret);
+
+	model->data_pos += cdata->num_elems;
+
+	if (done) {
+		/* Set model data done, update crc value */
+		model->crc = crc32(0, model->data, model->data_size);
+		comp_info(dev, "comp_set_model() done, memory_size = 0x%x, crc = 0x%08x",
+			  model->data_size, model->crc);
+	}
+
+	return 0;
+}
+
+int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
+		   struct sof_ipc_ctrl_data *cdata, int size)
+{
+	size_t bs;
+	int ret = 0;
+
+	comp_dbg(dev, "comp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
+		 cdata->msg_index, cdata->num_elems,
+		 cdata->elems_remaining);
+
+	/* Copy back to user space */
+	if (model->data) {
+		if (!cdata->msg_index) {
+			/* reset copy offset */
+			model->data_pos = 0;
+			comp_info(dev, "comp_get_model() model data_size = 0x%x",
+				  model->data_size);
+		}
+
+		bs = cdata->num_elems;
+		if (bs > size) {
+			comp_err(dev, "comp_get_model(): invalid size %d",
+				 bs);
+			return -EINVAL;
+		}
+
+		ret = memcpy_s(cdata->data->data, size,
+			       (char *)model->data + model->data_pos,
+			       bs);
+		assert(!ret);
+
+		cdata->data->abi = SOF_ABI_VERSION;
+		cdata->data->size = model->data_size;
+		model->data_pos += bs;
+
+	} else {
+		comp_err(dev, "comp_get_model(): !model->data");
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 struct comp_dev *comp_make_shared(struct comp_dev *dev)
 {
 	struct list_item *old_bsource_list = &dev->bsource_list;
