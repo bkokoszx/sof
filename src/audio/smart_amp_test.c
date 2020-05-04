@@ -21,7 +21,7 @@ DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
-	struct smart_amp_model_data model;
+	struct comp_model_data model;
 
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */
@@ -30,43 +30,6 @@ struct smart_amp_data {
 	uint32_t in_channels;
 	uint32_t out_channels;
 };
-
-static void free_mem_load(struct smart_amp_data *sad)
-{
-	assert(sad);
-
-	if (sad->model.data) {
-		rfree(sad->model.data);
-		sad->model.data = NULL;
-		sad->model.data_size = 0;
-		sad->model.crc = 0;
-		sad->model.data_pos = 0;
-	}
-}
-
-static int alloc_mem_load(struct smart_amp_data *sad, uint32_t size)
-{
-	if (!size)
-		return 0;
-
-	assert(sad);
-
-	free_mem_load(sad);
-
-	sad->model.data = rballoc(0, SOF_MEM_CAPS_RAM, size);
-
-	if (!sad->model.data) {
-		comp_cl_err(&comp_smart_amp, "alloc_mem_load(): sad->model.data rballoc failed");
-		return -ENOMEM;
-	}
-
-	bzero(sad->model.data, size);
-	sad->model.data_size = size;
-	sad->model.data_pos = 0;
-	sad->model.crc = 0;
-
-	return 0;
-}
 
 static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 				      struct sof_ipc_comp *comp)
@@ -171,62 +134,21 @@ static int smart_amp_get_config(struct comp_dev *dev,
 	return ret;
 }
 
-static int smart_amp_get_model(struct comp_dev *dev,
-			       struct sof_ipc_ctrl_data *cdata, int size)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	size_t bs;
-	int ret = 0;
-
-	comp_dbg(dev, "smart_amp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
-		 cdata->msg_index, cdata->num_elems,
-		 cdata->elems_remaining);
-
-	/* Copy back to user space */
-	if (sad->model.data) {
-		if (!cdata->msg_index) {
-			/* reset copy offset */
-			sad->model.data_pos = 0;
-			comp_info(dev, "smart_amp_get_model() model data_size = 0x%x",
-				  sad->model.data_size);
-		}
-
-		bs = cdata->num_elems;
-		if (bs > size) {
-			comp_err(dev, "smart_amp_get_model(): invalid size %d",
-				 bs);
-			return -EINVAL;
-		}
-
-		ret = memcpy_s(cdata->data->data, size,
-			       (char *)sad->model.data + sad->model.data_pos,
-			       bs);
-		assert(!ret);
-
-		cdata->data->abi = SOF_ABI_VERSION;
-		cdata->data->size = sad->model.data_size;
-		sad->model.data_pos += bs;
-
-	} else {
-		comp_err(dev, "smart_amp_get_model(): !sad->model.data");
-		ret = -EINVAL;
-	}
-
-	return ret;
-}
-
 static int smart_amp_ctrl_get_bin_data(struct comp_dev *dev,
 				       struct sof_ipc_ctrl_data *cdata,
 				       int size)
 {
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int ret = 0;
+
+	assert(sad);
 
 	switch (cdata->data->type) {
 	case SOF_SMART_AMP_CONFIG:
 		ret = smart_amp_get_config(dev, cdata, size);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = smart_amp_get_model(dev, cdata, size);
+		ret = comp_get_model(dev, &sad->model, cdata, size);
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_get_bin_data(): unknown binary data type");
@@ -255,69 +177,13 @@ static int smart_amp_ctrl_get_data(struct comp_dev *dev,
 	return ret;
 }
 
-static int smart_amp_set_model(struct comp_dev *dev,
-			       struct sof_ipc_ctrl_data *cdata)
-{
-	struct smart_amp_data *sad = comp_get_drvdata(dev);
-	bool done = false;
-	int ret = 0;
-
-	comp_dbg(dev, "smart_amp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
-		 cdata->msg_index, cdata->num_elems,
-		 cdata->elems_remaining);
-
-	if (!cdata->msg_index) {
-		ret = alloc_mem_load(sad, cdata->data->size);
-		if (ret < 0)
-			return ret;
-	}
-
-	if (!sad->model.data) {
-		comp_err(dev, "smart_amp_set_model(): buffer not allocated");
-		return -EINVAL;
-	}
-
-	if (!cdata->elems_remaining) {
-		if (cdata->num_elems + sad->model.data_pos <
-		    sad->model.data_size) {
-			comp_err(dev, "smart_amp_set_model(): not enough data to fill the buffer");
-			// TODO: handle this situation
-
-			return -EINVAL;
-		}
-
-		done = true;
-		comp_info(dev, "smart_amp_set_model() final packet received");
-	}
-
-	if (cdata->num_elems >
-	    sad->model.data_size - sad->model.data_pos) {
-		comp_err(dev, "smart_amp_set_model(): too much data");
-		return -EINVAL;
-	}
-
-	ret = memcpy_s((char *)sad->model.data + sad->model.data_pos,
-		       sad->model.data_size - sad->model.data_pos,
-		       cdata->data->data, cdata->num_elems);
-	assert(!ret);
-
-	sad->model.data_pos += cdata->num_elems;
-
-	if (done) {
-		/* Set model data done, update crc value */
-		sad->model.crc = crc32(0, sad->model.data,
-				       sad->model.data_size);
-		comp_info(dev, "smart_amp_set_model() done, memory_size = 0x%x, crc = 0x%08x",
-			  sad->model.data_size, sad->model.crc);
-	}
-
-	return 0;
-}
-
 static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 				       struct sof_ipc_ctrl_data *cdata)
 {
+	struct smart_amp_data *sad = comp_get_drvdata(dev);
 	int ret = 0;
+
+	assert(sad);
 
 	if (dev->state != COMP_STATE_READY) {
 		/* It is a valid request but currently this is not
@@ -335,7 +201,7 @@ static int smart_amp_ctrl_set_bin_data(struct comp_dev *dev,
 		ret = smart_amp_set_config(dev, cdata);
 		break;
 	case SOF_SMART_AMP_MODEL:
-		ret = smart_amp_set_model(dev, cdata);
+		ret = comp_set_model(dev, &sad->model, cdata);
 		break;
 	default:
 		comp_err(dev, "smart_amp_ctrl_set_bin_data(): unknown binary data type");
@@ -399,7 +265,7 @@ static void smart_amp_free(struct comp_dev *dev)
 
 	comp_info(dev, "smart_amp_free()");
 
-	free_mem_load(sad);
+	comp_free_model_data(dev, &sad->model);
 	rfree(sad);
 	rfree(dev);
 }
