@@ -35,6 +35,12 @@ struct comp_dev;
 STATIC_ASSERT(MUX_MAX_STREAMS < PLATFORM_MAX_STREAMS,
 	      unsupported_amount_of_streams_for_mux);
 
+struct mux_look_up_entry {
+	uint32_t stream_id;
+	uint32_t in_ch;
+	bool set;
+};
+
 struct mux_stream_data {
 	uint32_t pipeline_id;
 	uint8_t num_channels_deprecated;	/* deprecated in ABI 3.15 */
@@ -45,10 +51,10 @@ struct mux_stream_data {
 
 typedef void(*demux_func)(struct audio_stream *sink,
 			  const struct audio_stream *source, uint32_t frames,
-			  struct mux_stream_data *data);
+			  struct mux_stream_data *data, struct mux_look_up_entry *look_up);
 typedef void(*mux_func)(struct audio_stream *sink,
 			const struct audio_stream **sources, uint32_t frames,
-			struct mux_stream_data *data);
+			struct mux_stream_data *data, struct mux_look_up_entry *look_up);
 
 struct sof_mux_config {
 	uint16_t frame_format_deprecated;	/* deprecated in ABI 3.15 */
@@ -65,6 +71,8 @@ struct comp_data {
 		mux_func mux;
 		demux_func demux;
 	};
+	struct mux_look_up_entry
+		proc_lookup[MUX_MAX_STREAMS][PLATFORM_MAX_CHANNELS];
 
 	struct sof_mux_config config;
 };
@@ -76,6 +84,9 @@ struct comp_func_map {
 };
 
 extern const struct comp_func_map mux_func_map[];
+
+void mux_prepare_look_up_table(struct comp_dev *dev);
+void demux_prepare_look_up_table(struct comp_dev *dev);
 
 mux_func mux_get_processing_function(struct comp_dev *dev);
 demux_func demux_get_processing_function(struct comp_dev *dev);

@@ -49,6 +49,7 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 {
 	uint8_t i;
 	uint8_t j;
+	bool channel_set;
 
 	/* check if number of streams configured doesn't exceed maximum */
 	if (cfg->num_streams > MUX_MAX_STREAMS) {
@@ -70,16 +71,46 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	}
 
 	for (i = 0; i < cfg->num_streams; i++) {
+		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+			if (popcount(cd->config.streams[i].mask[j]) > 1) {
+				comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+				return -EINVAL;
+			}
+		}
+	}
+
+	if (dev->comp.type == SOF_COMP_MUX) {
+		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
+			channel_set = false;
+			for (i = 0 ; i < cfg->num_streams; i++) {
+				if (popcount(cd->config.streams[i].mask[j])) {
+					if (!channel_set) {
+						channel_set = true;
+					} else {
+						comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
+						return -EINVAL;
+					}
+				}
+			}
+		}
+	}
+
+	for (i = 0; i < cfg->num_streams; i++) {
 		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
 	}
 
+	cd->config.num_streams = cfg->num_streams;
+
 	if (dev->state > COMP_STATE_INIT) {
-		if (dev->comp.type == SOF_COMP_MUX)
+		if (dev->comp.type == SOF_COMP_MUX) {
+			mux_prepare_look_up_table(dev);
 			cd->mux = mux_get_processing_function(dev);
-		else
+		} else {
+			demux_prepare_look_up_table(dev);
 			cd->demux = demux_get_processing_function(dev);
+		}
 	}
 
 	return 0;
@@ -152,6 +183,20 @@ static uint8_t get_stream_index(struct comp_data *cd, uint32_t pipe_id)
 			return i;
 
 	comp_cl_err(&comp_mux, "get_stream_index(): couldn't find configuration for connected pipeline %u",
+		    pipe_id);
+
+	return 0;
+}
+
+static struct mux_look_up_entry * get_lookup_table(struct comp_data *cd, uint32_t pipe_id)
+{
+	int i;
+
+	for (i = 0; i < MUX_MAX_STREAMS; i++)
+		if (cd->config.streams[i].pipeline_id == pipe_id)
+			return &cd->proc_lookup[i][0];
+
+	comp_cl_err(&comp_mux, "get_lookup_table(): couldn't find configuration for connected pipeline %u",
 		    pipe_id);
 
 	return 0;
@@ -276,6 +321,8 @@ static int demux_copy(struct comp_dev *dev)
 	struct comp_buffer *source;
 	struct comp_buffer *sink;
 	struct comp_buffer *sinks[MUX_MAX_STREAMS] = { NULL };
+	struct mux_look_up_entry *look_ups[MUX_MAX_STREAMS] = { NULL };
+	struct mux_look_up_entry *look_up; 
 	struct list_item *clist;
 	uint32_t num_sinks = 0;
 	uint32_t i = 0;
@@ -299,7 +346,9 @@ static int demux_copy(struct comp_dev *dev)
 		if (sink->sink->state == dev->state) {
 			num_sinks++;
 			i = get_stream_index(cd, sink->pipeline_id);
+			look_up = get_lookup_table(cd, sink->pipeline_id);
 			sinks[i] = sink;
+			look_ups[i] = look_up;
 		}
 	}
 
@@ -345,7 +394,7 @@ static int demux_copy(struct comp_dev *dev)
 
 		buffer_invalidate(source, source_bytes);
 		cd->demux(&sinks[i]->stream, &source->stream, frames,
-			  &cd->config.streams[i]);
+			  &cd->config.streams[i], look_ups[i]);
 		buffer_writeback(sinks[i], sinks_bytes[i]);
 	}
 
@@ -441,7 +490,7 @@ static int mux_copy(struct comp_dev *dev)
 
 	/* produce output */
 	cd->mux(&sink->stream, &sources_stream[0], frames,
-		&cd->config.streams[0]);
+		&cd->config.streams[0], &cd->proc_lookup[0][0]);
 	buffer_writeback(sink, sink_bytes);
 
 	/* update components */
