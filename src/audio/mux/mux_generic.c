@@ -19,34 +19,6 @@
 #include <stdint.h>
 
 #if CONFIG_FORMAT_S16LE
-/*
- * \brief Fetch 16b samples from source buffer and perform routing operations
- *	  based on mask provided.
- * \param[in,out] source Source buffer.
- * \param[in] offset Offset in source buffer.
- * \param[in] mask Routing bitmask for calculating output sample.
- */
-UT_STATIC inline int32_t calc_sample_s16le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
-{
-	int32_t sample = 0;
-	int16_t *src;
-	int8_t in_ch;
-
-	if (mask == 0)
-		return 0;
-
-	for (in_ch = 0; in_ch < source->channels; in_ch++) {
-		if (mask & BIT(in_ch)) {
-			src = audio_stream_read_frag_s16(source,
-							 offset + in_ch);
-			sample += *src;
-		}
-	}
-
-	return sample;
-}
-
 /* \brief Demuxing 16 bit streams.
  *
  * Source stream is routed to sink with regard to routing bitmasks from
@@ -58,28 +30,33 @@ UT_STATIC inline int32_t calc_sample_s16le(const struct audio_stream *source,
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s16le(struct audio_stream *sink,
+static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
-			struct mux_stream_data *data)
-{
-	int32_t sample;
+			struct mux_stream_data *data, struct mux_look_up *look_up)
+{/*
+	int16_t *src;
 	int16_t *dst;
+	uint32_t offset;
 	uint32_t dst_idx;
+	uint8_t source_ch;
 	uint8_t i;
 	uint8_t out_ch;
 
 	for (i = 0; i < frames; i++) {
 		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = calc_sample_s16le(source,
-						   i * source->channels,
-						   data->mask[out_ch]);
+			if (!look_up[out_ch].set)
+				continue;
 
-			/* saturate to 16 bits */
+			source_ch = look_up[out_ch].in_ch;
+			offset = i * source->channels;
+			src = audio_stream_read_frag_s16(source,
+							 offset + source_ch);
+			// saturate to 32 bits 
 			dst_idx = i * sink->channels + out_ch;
 			dst = audio_stream_write_frag_s16(sink, dst_idx);
-			*dst = sat_int16(sample);
+			*dst = *src;
 		}
-	}
+	}*/
 }
 
 /* \brief Muxing 16 bit streams.
@@ -95,177 +72,39 @@ static void demux_s16le(struct audio_stream *sink,
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s16le(struct audio_stream *sink,
+static void mux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
-		      struct mux_stream_data *data)
+		      struct mux_stream_data *data, struct mux_look_up *look_up)
 {
-	const struct audio_stream *source;
+	/*const struct audio_stream *source;
 	uint8_t i;
-	uint8_t j;
+	uint8_t source_ch;
 	uint8_t out_ch;
+	uint32_t offset;
+	int16_t *src;
 	int16_t *dst;
 	uint32_t dst_idx;
-	int32_t sample;
 
 	for (i = 0; i < frames; i++) {
 		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = 0;
+			source = sources[look_up[out_ch].stream_id];
 
-			for (j = 0; j < MUX_MAX_STREAMS; j++) {
-				source = sources[j];
-				if (!source)
-					continue;
+			if (!source || !look_up[out_ch].set)
+				continue;
 
-				sample += calc_sample_s16le(source,
-						i * source->channels,
-						data[j].mask[out_ch]);
-			}
+			source_ch = look_up[out_ch].in_ch;
+			offset = i * source->channels;
+			src = audio_stream_read_frag_s16(source,
+							 offset + source_ch);
 			dst_idx = i * sink->channels + out_ch;
 			dst = audio_stream_write_frag_s16(sink, dst_idx);
-			*dst = sat_int16(sample);
+			*dst = *src;
 		}
-	}
+	}*/
 }
 #endif /* CONFIG_FORMAT_S16LE */
 
-#if CONFIG_FORMAT_S24LE
-/*
- * \brief Fetch 24b samples from source buffer and perform routing operations
- *	  based on mask provided.
- * \param[in,out] source Source buffer.
- * \param[in] offset Offset in source buffer.
- * \param[in] mask Routing bitmask for calculating output sample.
- */
-UT_STATIC inline int32_t calc_sample_s24le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
-{
-	int32_t sample = 0;
-	int32_t *src;
-	int8_t in_ch;
-
-	if (mask == 0)
-		return 0;
-
-	for (in_ch = 0; in_ch < source->channels; in_ch++) {
-		if (mask & BIT(in_ch)) {
-			src = audio_stream_read_frag_s32(source,
-							 offset + in_ch);
-			sample += sign_extend_s24(*src);
-		}
-	}
-
-	return sample;
-}
-
-/* \brief Demuxing 24 bit streams.
- *
- * Source stream is routed to sink with regard to routing bitmasks from
- * mux_stream_data structure. Each bitmask describes composition of single
- * output channel.
- *
- * \param[in,out] sink Destination buffer.
- * \param[in,out] source Source buffer.
- * \param[in] frames Number of frames to process.
- * \param[in] data Parameters describing channel count and routing.
- */
-static void demux_s24le(struct audio_stream *sink,
-			const struct audio_stream *source, uint32_t frames,
-			struct mux_stream_data *data)
-{
-	int32_t sample;
-	int32_t *dst;
-	uint32_t dst_idx;
-	uint8_t i;
-	uint8_t out_ch;
-
-	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = calc_sample_s24le(source,
-						   i * source->channels,
-						   data->mask[out_ch]);
-
-			/* saturate to 24 bits */
-			dst_idx = i * sink->channels + out_ch;
-			dst = audio_stream_write_frag_s32(sink, dst_idx);
-			*dst = sat_int24(sample);
-		}
-	}
-}
-
-/* \brief Muxing 24 bit streams.
- *
- * Source streams are routed to sink with regard to routing bitmasks from
- * mux_stream_data structures array. Each source stream has bitmask for each
- * of it's channels describing to which channels of output stream it
- * contributes.
- *
- * \param[in,out] sink Destination buffer.
- * \param[in,out] sources Array of source buffers.
- * \param[in] frames Number of frames to process.
- * \param[in] data Array of parameters describing channel count and routing for
- *		   each stream.
- */
-static void mux_s24le(struct audio_stream *sink,
-		      const struct audio_stream **sources, uint32_t frames,
-		      struct mux_stream_data *data)
-{
-	const struct audio_stream *source;
-	uint8_t i;
-	uint8_t j;
-	uint8_t out_ch;
-	int32_t *dst;
-	uint32_t dst_idx;
-	int32_t sample;
-
-	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = 0;
-			for (j = 0; j < MUX_MAX_STREAMS; j++) {
-				source = sources[j];
-				if (!source)
-					continue;
-
-				sample += calc_sample_s24le(source,
-						i * source->channels,
-						data[j].mask[out_ch]);
-			}
-			dst_idx = i * sink->channels + out_ch;
-			dst = audio_stream_write_frag_s32(sink, dst_idx);
-			*dst = sat_int24(sample);
-		}
-	}
-}
-#endif /* CONFIG_FORMAT_S24LE */
-
-#if CONFIG_FORMAT_S32LE
-/*
- * \brief Fetch 32b samples from source buffer and perform routing operations
- *	  based on mask provided.
- * \param[in,out] source Source buffer.
- * \param[in] offset Offset in source buffer.
- * \param[in] mask Routing bitmask for calculating output sample.
- */
-UT_STATIC inline int64_t calc_sample_s32le(const struct audio_stream *source,
-					   uint32_t offset, uint8_t mask)
-{
-	int64_t sample = 0;
-	int32_t *src;
-	int8_t in_ch;
-
-	if (mask == 0)
-		return 0;
-
-	for (in_ch = 0; in_ch < source->channels; in_ch++) {
-		if (mask & BIT(in_ch)) {
-			src = audio_stream_read_frag_s32(source,
-							 offset + in_ch);
-			sample += *src;
-		}
-	}
-
-	return sample;
-}
-
+#if CONFIG_FORMAT_S24LE || CONFIG_FORMAT_S32LE
 /* \brief Demuxing 32 bit streams.
  *
  * Source stream is routed to sink with regard to routing bitmasks from
@@ -277,27 +116,125 @@ UT_STATIC inline int64_t calc_sample_s32le(const struct audio_stream *source,
  * \param[in] frames Number of frames to process.
  * \param[in] data Parameters describing channel count and routing.
  */
-static void demux_s32le(struct audio_stream *sink,
+static void demux_s32le(struct comp_dev *dev,struct audio_stream *sink,
 			const struct audio_stream *source, uint32_t frames,
-			struct mux_stream_data *data)
-{
-	int64_t sample;
+			struct mux_stream_data *data, struct mux_look_up *look_up)
+{/*
+	int32_t *src;
 	int32_t *dst;
+	uint32_t offset;
 	uint32_t dst_idx;
+	uint8_t source_ch;
 	uint8_t i;
 	uint8_t out_ch;
 
 	for (i = 0; i < frames; i++) {
 		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = calc_sample_s32le(source,
-						   i * source->channels,
-						   data->mask[out_ch]);
+			if (!look_up[out_ch].set)
+				continue;
 
-			/* saturate to 32 bits */
+			source_ch = look_up[out_ch].in_ch;
+			offset = i * source->channels;
+			src = audio_stream_read_frag_s32(source,
+							 offset + source_ch);
+			// saturate to 32 bits 
 			dst_idx = i * sink->channels + out_ch;
 			dst = audio_stream_write_frag_s32(sink, dst_idx);
-			*dst = sat_int32(sample);
+			*dst = *src;
 		}
+	}*/
+}
+
+static void check_for_wrap(struct audio_stream *sink,
+			   const struct audio_stream **sources,
+			   struct mux_look_up *look_up)
+{
+	const struct audio_stream *source;
+	int elem;
+
+	/* check sources and destinations for wrap */
+	for (elem = 0; elem < look_up[0].num_elems; elem++) {
+		source = sources[look_up[0].copy_elem[elem].stream_id];
+			if (!source)
+				continue;
+				
+		audio_stream_wrap(sink, look_up[0].copy_elem[0].dest);
+		audio_stream_wrap(source, look_up[0].copy_elem[0].src);
+	}
+}
+
+static uint32_t calc_frames_without_wrap(struct comp_dev *dev, struct audio_stream *sink,
+					 const struct audio_stream **sources,
+					 struct mux_look_up *look_up,
+					 uint32_t frames)
+{
+	const struct audio_stream *source;
+	uint32_t frame_bytes;
+	uint32_t sample_bytes;
+	uint32_t size_to_end; /* size to buffer end */
+	uint32_t min_frames;
+	uint32_t tmp_frames;
+	uint8_t elem;
+
+	comp_info(dev, "calc_frames_without_wrap(): frames: %d", frames);
+
+	min_frames = frames;
+
+	for (elem = 0; elem < look_up[0].num_elems; elem++) {
+		source = sources[look_up[0].copy_elem[elem].stream_id];
+		if (!source)
+			continue;
+		
+		/* calculate sources min frames */
+		frame_bytes = audio_stream_frame_bytes(source);
+		sample_bytes = audio_stream_sample_bytes(source);
+		size_to_end = (char *)source->end_addr -
+			(char *)look_up[0].copy_elem[elem].src;
+		tmp_frames = size_to_end / frame_bytes;
+		/* check whether there is enough memory for tmp_frames and
+		 * one more channel
+		 * */
+		if (size_to_end - (tmp_frames * frame_bytes) >= sample_bytes)
+			tmp_frames++;
+		min_frames = (tmp_frames < min_frames) ? tmp_frames : min_frames;
+
+		/* calculate sink min frames */
+		frame_bytes = audio_stream_frame_bytes(sink);
+		sample_bytes = audio_stream_sample_bytes(sink);
+		size_to_end = (char *)sink->end_addr - (char *)look_up[0].copy_elem[elem].dest;
+		tmp_frames = size_to_end / frame_bytes;
+		/* check whether there is enough memory for tmp_frames and
+		 * one more channel
+		 * */
+		if (size_to_end - (tmp_frames * frame_bytes) >= sample_bytes)
+			tmp_frames++;
+		min_frames = (tmp_frames < min_frames) ? tmp_frames : min_frames;
+	}
+
+	return min_frames;
+}
+
+static void init_look_up_pointers(struct comp_dev *dev,
+				  struct audio_stream *sink,
+				  const struct audio_stream **sources,
+				  struct mux_look_up *look_up)
+{
+	const struct audio_stream *source;
+	uint8_t elem;
+
+	/* init pointers */
+	for (elem = 0; elem < look_up[0].num_elems; elem++) {
+		source = sources[look_up[0].copy_elem[elem].stream_id];
+		if (!source)
+			continue;
+
+		look_up[0].copy_elem[elem].src = (int32_t *)source->r_ptr +
+			look_up[0].copy_elem[elem].in_ch;
+		look_up[0].copy_elem[elem].src_inc = source->channels;
+
+		look_up[0].copy_elem[elem].dest = (int32_t *)sink->w_ptr +
+			look_up[0].copy_elem[elem].out_ch;
+		look_up[0].copy_elem[elem].dest_inc = sink->channels;
 	}
 }
 
@@ -314,50 +251,116 @@ static void demux_s32le(struct audio_stream *sink,
  * \param[in] data Array of parameters describing channel count and routing for
  *		   each stream.
  */
-static void mux_s32le(struct audio_stream *sink,
+static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
-		      struct mux_stream_data *data)
+		      struct mux_stream_data *data, struct mux_look_up *look_up)
 {
 	const struct audio_stream *source;
 	uint8_t i;
-	uint8_t j;
-	uint8_t out_ch;
+	uint8_t elem;
+	int32_t *src;
 	int32_t *dst;
-	uint32_t dst_idx;
-	int64_t sample;
+	uint32_t frames_without_wrap;
 
-	for (i = 0; i < frames; i++) {
-		for (out_ch = 0; out_ch < sink->channels; out_ch++) {
-			sample = 0;
-			for (j = 0; j < MUX_MAX_STREAMS; j++) {
-				source = sources[j];
-				if (!source)
+	comp_info(dev, "mux_s32le()");
+
+	init_look_up_pointers(dev, sink, sources, look_up);
+
+	while (frames) {
+
+		frames_without_wrap = calc_frames_without_wrap(dev, sink, sources,look_up,
+							       frames);
+
+		frames_without_wrap = frames < frames_without_wrap ? frames :
+			frames_without_wrap;
+
+		for (i = 0; i < frames_without_wrap; i++) {
+			for (elem = 0; elem < look_up[0].num_elems; elem++) {
+				source = sources[look_up[0].copy_elem[elem].stream_id];
+
+				if (!source) {
 					continue;
-
-				sample += calc_sample_s32le(source,
-						i * source->channels,
-						data[j].mask[out_ch]);
+				}
+				src = (int32_t *)look_up[0].copy_elem[elem].src;
+				dst = (int32_t *)look_up[0].copy_elem[elem].dest;
+				*dst = *src;
+				look_up[0].copy_elem[elem].src = src + look_up[0].copy_elem[elem].src_inc;
+				look_up[0].copy_elem[elem].dest = dst + look_up[0].copy_elem[elem].dest_inc;
 			}
-			dst_idx = i * sink->channels + out_ch;
-			dst = audio_stream_write_frag_s32(sink, dst_idx);
-			*dst = sat_int32(sample);
 		}
+
+		check_for_wrap(sink, sources, look_up);
+
+		frames -= frames_without_wrap;
 	}
 }
 
-#endif /* CONFIG_FORMAT_S32LE */
+#endif /* CONFIG_FORMAT_S24LE CONFIG_FORMAT_S32LE */
 
 const struct comp_func_map mux_func_map[] = {
 #if CONFIG_FORMAT_S16LE
 	{ SOF_IPC_FRAME_S16_LE, &mux_s16le, &demux_s16le },
 #endif
 #if CONFIG_FORMAT_S24LE
-	{ SOF_IPC_FRAME_S24_4LE, &mux_s24le, &demux_s24le },
+	{ SOF_IPC_FRAME_S24_4LE, &mux_s32le, &demux_s32le },
 #endif
 #if CONFIG_FORMAT_S32LE
 	{ SOF_IPC_FRAME_S32_LE, &mux_s32le, &demux_s32le },
 #endif
 };
+
+void mux_prepare_look_up_table(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint8_t i;
+	uint8_t j;
+	uint8_t k;
+	uint8_t look_up_idx = 0;
+
+	/* Prepare look up table */
+	for (i = 0; i < cd->config.num_streams; i++) {
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
+			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
+				if (cd->config.streams[i].mask[j] & BIT(k)) {
+					/* MUX component has only one sink */
+					cd->lookup[0].copy_elem[look_up_idx].in_ch = k;
+					cd->lookup[0].copy_elem[look_up_idx].out_ch = j;
+					cd->lookup[0].copy_elem[look_up_idx].stream_id = i;
+					cd->lookup[0].num_elems = ++look_up_idx;
+					comp_info(dev, "mux_prepare_look_up_table(): cd->lookup[0].copy_elem[look_up_idx].in_ch: %d", cd->lookup[0].copy_elem[look_up_idx-1].in_ch);
+					comp_info(dev, "mux_prepare_look_up_table(): cd->lookup[0].copy_elem[look_up_idx].out_ch: %d", cd->lookup[0].copy_elem[look_up_idx-1].out_ch);
+					comp_info(dev, "mux_prepare_look_up_table(): cd->lookup[0].copy_elem[look_up_idx].stream_id: %d", cd->lookup[0].copy_elem[look_up_idx-1].stream_id);
+					comp_info(dev, "mux_prepare_look_up_table(): cd->lookup[0].copy_elem[look_up_idx].num_elems: %d", cd->lookup[0].num_elems);
+				}
+			}
+		}
+	}
+}
+
+void demux_prepare_look_up_table(struct comp_dev *dev)
+{
+	struct comp_data *cd = comp_get_drvdata(dev);
+	uint8_t i;
+	uint8_t j;
+	uint8_t k;
+	uint8_t look_up_idx;
+
+	/* Prepare look up table */
+	for (i = 0; i < cd->config.num_streams; i++) {
+		look_up_idx = 0;
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
+			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
+				if (cd->config.streams[i].mask[j] & BIT(k)) {
+					/* MUX component has only one sink */
+					cd->lookup[i].copy_elem[look_up_idx].in_ch = k;
+					cd->lookup[i].copy_elem[look_up_idx].out_ch = j;
+					cd->lookup[i].copy_elem[look_up_idx].stream_id = i;
+					cd->lookup[i].num_elems = ++look_up_idx;
+				}
+			}
+		}
+	}
+}
 
 mux_func mux_get_processing_function(struct comp_dev *dev)
 {
