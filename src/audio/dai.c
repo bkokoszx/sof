@@ -288,7 +288,7 @@ static int dai_playback_params(struct comp_dev *dev, uint32_t period_bytes,
 	config->is_scheduling_source = comp_is_scheduling_source(dev);
 	config->period = dev->pipeline->ipc_pipe.period;
 
-	comp_info(dev, "dai_playback_params() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
+	comp_info(dev, "dai_playback_prams() dest_dev = %d stream_id = %d src_width = %d dest_width = %d",
 		  config->dest_dev, dd->stream_id,
 		  config->src_width, config->dest_width);
 
