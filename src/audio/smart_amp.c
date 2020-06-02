@@ -480,7 +480,7 @@ static int smart_amp_trigger(struct comp_dev *dev, int cmd)
 
 	return ret;
 }
-
+/*
 static int smart_amp_process_s16(struct comp_dev *dev,
 				 const struct audio_stream *source,
 				 const struct audio_stream *sink,
@@ -563,6 +563,13 @@ static int smart_amp_process(struct comp_dev *dev, uint32_t frames,
 	}
 
 	return ret;
+} */
+
+static void *wrap_buffer_pointer(void *ptr, const struct audio_stream *buffer) {
+	if (ptr >= buffer->end_addr)
+		ptr = (char *)buffer->addr + ((char *)ptr - (char *)buffer->end_addr);
+	
+	return ptr;
 }
 
 static int smart_amp_copy(struct comp_dev *dev)
@@ -579,7 +586,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	uint32_t feedback_flags;
 	int ret = 0;
 
-	comp_dbg(dev, "smart_amp_copy()");
+	comp_info(dev, "smart_amp_copy()");
 
 	buffer_lock(sad->source_buf, &source_flags);
 	buffer_lock(sad->sink_buf, &sink_flags);
@@ -601,7 +608,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 		avail_feedback_frames = sad->feedback_buf->stream.avail /
 			audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-		avail_frames = MIN(avail_passthrough_frames, avail_feedback_frames);
+		//avail_frames = MIN(avail_passthrough_frames, avail_feedback_frames);
 
 		feedback_bytes = avail_frames *
 			audio_stream_frame_bytes(&sad->feedback_buf->stream);
@@ -611,8 +618,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 		comp_dbg(dev, "smart_amp_copy(): processing %d feedback bytes",
 		  	feedback_bytes);
 
-		smart_amp_process(dev, avail_frames, sad->feedback_buf, sad->sink_buf,
-			  sad->config.feedback_ch_map);
+		// smart_amp_process(dev, avail_frames, sad->feedback_buf, sad->sink_buf,
+		// 	  sad->config.feedback_ch_map);
 
 		comp_update_buffer_consume(sad->feedback_buf, feedback_bytes);
 	}
@@ -629,8 +636,50 @@ static int smart_amp_copy(struct comp_dev *dev)
 	buffer_unlock(sad->sink_buf, sink_flags);
 
 	/* process data */
-	smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
-			  sad->config.source_ch_map);
+	//smart_amp_process(dev, avail_frames, sad->source_buf, sad->sink_buf,
+	 		  //sad->config.source_ch_map);
+
+	comp_info(dev, "smart_amp_copy(): avail_frames: %d", avail_frames);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.avail: %d", sad->source_buf->stream.avail);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.free: %d", sad->source_buf->stream.free);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.size: %d", sad->source_buf->stream.size);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.channels: %d", sad->source_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.frame_fmt: %d", sad->source_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.avail: %d", sad->sink_buf->stream.avail);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.free: %d", sad->sink_buf->stream.free);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.size: %d", sad->sink_buf->stream.size);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.channels: %d", sad->sink_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.frame_fmt: %d", sad->sink_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.channels: %d", sad->sink_buf->stream.rate);
+
+	int x;
+	int32_t *input = (int32_t*) sad->source_buf->stream.r_ptr;
+        int32_t *output = (int32_t*) sad->sink_buf->stream.w_ptr;
+	for (x = 0 ; x < avail_frames ; x++)            {
+		/* increment the right channel - similarly to input[2*x + 1]*/
+		input++;
+		/* check whether we do not exceed source buffer end address */
+		input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
+
+		/* output channel will be input right - output [4x] */
+		*output = *input;
+
+		/* increment to output ch1 */
+		output++; /* output[4x+1]*/	
+		/* check whether we do no exceed sink buffer end address */
+		output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+		/* output ch1 will be muted */
+		*output = 0;
+
+		output++; /* do not process output chn2 */
+		output++; /* do not process output chn3 */
+
+		/* going to the next frame */
+		output++;
+		output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+		input++;
+		input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
+        }
 
 	/* source/sink buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
