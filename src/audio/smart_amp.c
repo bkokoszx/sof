@@ -654,7 +654,8 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	int x;
 	int32_t *input = (int32_t*) sad->source_buf->stream.r_ptr;
-        int32_t *output = (int32_t*) sad->sink_buf->stream.w_ptr;
+	int32_t *output = (int32_t*) sad->sink_buf->stream.w_ptr;
+	#ifdef ORG_CODE
 	for (x = 0 ; x < avail_frames ; x++)            {
 		/* increment the right channel - similarly to input[2*x + 1]*/
 		input++;
@@ -679,7 +680,51 @@ static int smart_amp_copy(struct comp_dev *dev)
 		output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
 		input++;
 		input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
-        }
+        	}
+	#else
+	//int32_t dsm_in[48 * 2 * 10];
+	int32_t dsm_in[48 * 2];
+	/* Reserved 5ms buffer for temporary test. 10ms length, stereo. */
+	if ( avail_frames >= 480)	// Just keep extra caution to avoid wrong memory access.
+		comp_info(dev,
+			"[RYAN] smart_amp_copy() size warning! size:%d", avail_frames);
+	else {	
+		for (x = 0 ; x < avail_frames ; x++)            {
+			/* Copying input left */
+			input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
+			dsm_in[2 * x] = *input;
+			input++;
+
+			/* Copying input right */
+			input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
+			dsm_in[2 * x + 1] = *input;
+			input++;
+		}
+		/* This part will be replaced by dsm_process function */
+		for (x = 0 ; x < avail_frames ; x++)            {
+			dsm_in[2 * x] = dsm_in[2 * x + 1];	// copy right input to the left output
+			dsm_in[2 * x + 1] = 0;	// right channel muted.
+		}
+		for (x = 0 ; x < avail_frames ; x++)            {
+			/* Proceed CH0 */
+			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+			*output = dsm_in[2 * x];
+			output++;
+			/* Proceed CH1 */
+			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+			*output = dsm_in[2 * x + 1];
+			output++;
+			/* Proceed CH2 */		
+			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+			*output = 0;
+			output++;
+			/* Proceed CH3 */			
+			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
+			*output = 0;
+			output++;
+		}
+	}
+	#endif
 
 	/* source/sink buffer pointers update */
 	comp_update_buffer_consume(sad->source_buf, source_bytes);
