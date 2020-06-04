@@ -31,6 +31,8 @@ struct smart_amp_data {
 
 	uint32_t in_channels;
 	uint32_t out_channels;
+
+	int32_t *dsm_in;
 };
 
 static void free_mem_load(struct smart_amp_data *sad)
@@ -127,6 +129,12 @@ static struct comp_dev *smart_amp_new(const struct comp_driver *drv,
 	}
 
 	memcpy_s(&sad->config, sizeof(struct sof_smart_amp_config), cfg, bs);
+
+	sad->dsm_in = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM, sizeof(int32_t)*48*2*10);
+	if (!sad->dsm_in) {
+		rfree(dev);
+		return NULL;
+	}
 
 	dev->state = COMP_STATE_READY;
 
@@ -682,37 +690,38 @@ static int smart_amp_copy(struct comp_dev *dev)
 		input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
         	}
 	#else
-	//int32_t dsm_in[48 * 2 * 10];
-	int32_t dsm_in[48 * 2];
+
 	/* Reserved 5ms buffer for temporary test. 10ms length, stereo. */
 	if ( avail_frames >= 480)	// Just keep extra caution to avoid wrong memory access.
 		comp_info(dev,
 			"[RYAN] smart_amp_copy() size warning! size:%d", avail_frames);
 	else {	
+		comp_info(dev,
+			"[RYAN] smart_amp_copy() avail_frames: %d", avail_frames);
 		for (x = 0 ; x < avail_frames ; x++)            {
 			/* Copying input left */
 			input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
-			dsm_in[2 * x] = *input;
+			sad->dsm_in[2 * x] = *input;
 			input++;
 
 			/* Copying input right */
 			input = (int32_t *)wrap_buffer_pointer(input, &sad->source_buf->stream);
-			dsm_in[2 * x + 1] = *input;
+			sad->dsm_in[2 * x + 1] = *input;
 			input++;
 		}
 		/* This part will be replaced by dsm_process function */
 		for (x = 0 ; x < avail_frames ; x++)            {
-			dsm_in[2 * x] = dsm_in[2 * x + 1];	// copy right input to the left output
-			dsm_in[2 * x + 1] = 0;	// right channel muted.
+			sad->dsm_in[2 * x] = sad->dsm_in[2 * x + 1];	// copy right input to the left output
+			sad->dsm_in[2 * x + 1] = 0;	// right channel muted.
 		}
 		for (x = 0 ; x < avail_frames ; x++)            {
 			/* Proceed CH0 */
 			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
-			*output = dsm_in[2 * x];
+			*output = sad->dsm_in[2 * x];
 			output++;
 			/* Proceed CH1 */
 			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
-			*output = dsm_in[2 * x + 1];
+			*output = sad->dsm_in[2 * x + 1];
 			output++;
 			/* Proceed CH2 */		
 			output = (int32_t *)wrap_buffer_pointer(output, &sad->sink_buf->stream);
