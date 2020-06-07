@@ -176,7 +176,7 @@ static uint32_t calc_frames_without_wrap(struct comp_dev *dev, struct audio_stre
 	uint32_t tmp_frames;
 	uint8_t elem;
 
-	comp_info(dev, "calc_frames_without_wrap(): frames: %d", frames);
+	comp_dbg(dev, "calc_frames_without_wrap(): frames: %d", frames);
 
 	min_frames = frames;
 
@@ -255,14 +255,13 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 		      const struct audio_stream **sources, uint32_t frames,
 		      struct mux_stream_data *data, struct mux_look_up *look_up)
 {
-	const struct audio_stream *source;
 	uint8_t i;
 	uint8_t elem;
 	int32_t *src;
 	int32_t *dst;
 	uint32_t frames_without_wrap;
 
-	comp_info(dev, "mux_s32le()");
+	comp_dbg(dev, "mux_s32le()");
 
 	init_look_up_pointers(dev, sink, sources, look_up);
 
@@ -276,11 +275,6 @@ static void mux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 
 		for (i = 0; i < frames_without_wrap; i++) {
 			for (elem = 0; elem < look_up[0].num_elems; elem++) {
-				source = sources[look_up[0].copy_elem[elem].stream_id];
-
-				if (!source) {
-					continue;
-				}
 				src = (int32_t *)look_up[0].copy_elem[elem].src;
 				dst = (int32_t *)look_up[0].copy_elem[elem].dest;
 				*dst = *src;

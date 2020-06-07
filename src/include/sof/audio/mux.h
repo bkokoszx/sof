@@ -84,7 +84,8 @@ struct comp_data {
 	};
 
 	struct mux_look_up lookup[MUX_MAX_STREAMS];
-
+	struct mux_look_up active_lookup;
+	
 	struct sof_mux_config config;
 };
 
