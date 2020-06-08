@@ -72,11 +72,8 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 		}
 	}
 
-	comp_info(dev, "mux_set_values(): verifing mixing");
-	comp_info(dev, "mux_set_values(): cfg->num_stream: %d", cfg->num_streams);
 	for (i = 0; i < cfg->num_streams; i++) {
 		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
-			comp_info(dev, "mux_set_values(): i: %d, j: %d, cd->config.streams[i].mask[j]: 0x%x",i,j, cfg->streams[i].mask[j]);
 			if (popcount(cfg->streams[i].mask[j]) > 1) {
 				comp_cl_err(&comp_mux, "mux_set_values(): mux component is not able to mix channels");
 				return -EINVAL;
@@ -85,11 +82,9 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 	}
 
 	if (dev->comp.type == SOF_COMP_MUX) {
-		comp_info(dev, "mux_set_values(): verifing mixing");
 		for (j = 0 ; j < PLATFORM_MAX_CHANNELS; j++) {
 			channel_set = false;
 			for (i = 0 ; i < cfg->num_streams; i++) {
-				comp_info(dev, "mux_set_values(): i: %d, j: %d, cd->config.streams[i].mask[j]: 0x%x",i,j, cfg->streams[i].mask[j]);
 				if (popcount(cfg->streams[i].mask[j])) {
 					if (!channel_set) {
 						channel_set = true;
