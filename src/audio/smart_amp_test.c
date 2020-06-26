@@ -436,7 +436,28 @@ static int smart_amp_copy(struct comp_dev *dev)
 
 	avail_frames = avail_passthrough_frames;
 
-	comp_dbg(dev, "smart_amp_copy(): avail_passthrough_frames: %d",
+
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.size: %d", sad->feedback_buf->stream.size);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.avail: %d", sad->feedback_buf->stream.avail);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.free: %d", sad->feedback_buf->stream.free);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.channels: %d", sad->feedback_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.frame_fmt: %d", sad->feedback_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.rate: %d", sad->feedback_buf->stream.rate);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.size: %d", sad->source_buf->stream.size);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.avail: %d", sad->source_buf->stream.avail);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.free: %d", sad->source_buf->stream.free);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.channels: %d", sad->source_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.frame_fmt: %d", sad->source_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->source_buf->stream.rate: %d", sad->source_buf->stream.rate);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.size: %d", sad->sink_buf->stream.size);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.avail: %d", sad->sink_buf->stream.avail);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.free: %d", sad->sink_buf->stream.free);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.channels: %d", sad->sink_buf->stream.channels);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.frame_fmt: %d", sad->sink_buf->stream.frame_fmt);
+	comp_info(dev, "smart_amp_copy(): sad->sink_buf->stream.rate: %d", sad->sink_buf->stream.rate);
+
+
+	comp_info(dev, "smart_amp_copy(): avail_passthrough_frames: %d",
 		 avail_passthrough_frames);
 
 	buffer_lock(sad->feedback_buf, &feedback_flags);
@@ -445,10 +466,16 @@ static int smart_amp_copy(struct comp_dev *dev)
 		avail_feedback_frames = sad->feedback_buf->stream.avail /
 			audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
-		avail_frames = MIN(avail_passthrough_frames,
-				   avail_feedback_frames);
+		comp_info(dev, "smart_amp_copy(): avail_feedback_frames: %d",
+		 avail_feedback_frames);
 
-		feedback_bytes = avail_frames *
+		/*avail_frames = MIN(avail_passthrough_frames,
+				   avail_feedback_frames);
+		avail_frames = MAX(avail_frames, 48);*/
+
+		comp_info(dev, "smart_amp_copy(): avail_frames: %d", avail_frames);
+
+		feedback_bytes = avail_feedback_frames *
 			audio_stream_frame_bytes(&sad->feedback_buf->stream);
 
 		buffer_unlock(sad->feedback_buf, feedback_flags);
@@ -539,6 +566,13 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	if (!sad->process) {
 		comp_err(dev, "smart_amp_prepare(): get_smart_amp_process failed");
 		return -EINVAL;
+	}
+
+	int i;
+	for (i = 0 ; i < 8 ; i++) {
+		comp_info(dev, "smart_amp_prepare(): i: %d", i);
+		comp_info(dev, "smart_amp_prepare(): sad->config.feedback_ch_map[i]: %d", sad->config.feedback_ch_map[i]);
+		comp_info(dev, "smart_amp_prepare(): sad->config.source_ch_map[i]: %d", sad->config.source_ch_map[i]);
 	}
 
 	return 0;

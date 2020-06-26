@@ -71,8 +71,11 @@ static int mux_set_values(struct comp_dev *dev, struct comp_data *cd,
 
 	for (i = 0; i < cfg->num_streams; i++) {
 		cd->config.streams[i].pipeline_id = cfg->streams[i].pipeline_id;
-		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++)
+		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
+			comp_cl_info(&comp_mux, "mux_set_values(): cfg->streams[i].mask[j] = 0x%x",
+					    cfg->streams[i].mask[j]);
 			cd->config.streams[i].mask[j] = cfg->streams[i].mask[j];
+		}
 	}
 
 	if (dev->state > COMP_STATE_INIT) {
