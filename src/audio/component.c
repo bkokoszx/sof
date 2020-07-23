@@ -328,20 +328,28 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 
 void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model)
 {
-	if (!model->data)
+	if (!model || !model->data)
 		return;
 
 	rfree(model->data);
+	rfree(model->data_new);
 	model->data = NULL;
+	model->data_new = NULL;
 	model->data_size = 0;
 	model->crc = 0;
-	model->data_pos = 0;
 }
 
 int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
-			   uint32_t size)
+			   uint32_t size, void *init_data)
 {
+	int ret;
+
 	comp_free_model_data(dev, model);
+
+	if (!model) {
+		comp_err(dev, "comp_alloc_model_data(): !model");
+		return -ENOMEM;
+	}
 
 	if (!size)
 		return 0;
@@ -353,9 +361,16 @@ int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
 		return -ENOMEM;
 	}
 
-	bzero(model->data, size);
+	if (init_data) {
+		ret = memcpy_s(model->data, size, init_data, size);
+		assert(!ret);
+	} else {
+		bzero(model->data, size);
+	}
+
+	model->data = NULL;
 	model->data_size = size;
-	model->data_pos = 0;
+	model->data_ready = true;
 	model->crc = 0;
 
 	return 0;
@@ -365,64 +380,85 @@ int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
 		   struct sof_ipc_ctrl_data *cdata)
 {
 	bool done = false;
+	size_t size;
+	uint32_t offset;
 	int ret = 0;
 
-	comp_dbg(dev, "comp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_info(dev, "comp_set_model() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
+
+	/* Check that there is no work-in-progress previous request */
+	if (model->data_new && cdata->msg_index == 0) {
+		comp_err(dev, "comp_set_model(), busy with previous request");
+		return -EBUSY;
+	}
 
 	/* in case when the current package is the first, we should allocate
 	 * memory for whole model data
 	 */
 	if (!cdata->msg_index) {
-		ret = comp_alloc_model_data(dev, model, cdata->data->size);
 		/* in case when required model size is equal to zero we do not
 		 * allocate memory and should just return 0
 		 */
-		if (ret < 0 || !cdata->data->size)
-			return ret;
+		if (!cdata->data->size)
+			return 0;
+
+		model->data_new = rballoc(0, SOF_MEM_CAPS_RAM,
+					  cdata->data->size);
+		if (!model->data_new) {
+			comp_err(dev, "comp_set_model(): model->data_new allocation failed.");
+			return ENOMEM;
+		}
+
+		model->data_size = cdata->data->size;
+		model->data_ready = false;
 	}
 
 	/* return an error in case when we do not have allocated memory for
 	 * model data
 	 */
-	if (!model->data) {
+	if (!model->data_new) {
 		comp_err(dev, "comp_set_model(): buffer not allocated");
 		return -ENOMEM;
 	}
 
-	if (!cdata->elems_remaining) {
-		/* when we receive the last package and do not fill the whole
-		 * allocated buffer, we return an error
-		 */
-		if (cdata->num_elems + model->data_pos < model->data_size) {
-			comp_err(dev, "comp_set_model(): not enough data to fill the buffer");
-			// TODO: handle this situation
+	size = cdata->data->size;
+	offset = size - cdata->elems_remaining - cdata->num_elems;
 
-			return -EINVAL;
-		}
+	comp_info(dev, "comp_set_model() model->data_size = %d, cdata->data->size = %d", model->data_size, cdata->data->size);
+	comp_info(dev, "comp_set_model() offset = %d ", offset);
+	comp_info(dev, "comp_set_model() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
 
-		/* the whole data were received properly */
-		done = true;
-		comp_dbg(dev, "comp_set_model(): final package received");
-	}
-
-	/* return an error in case when received data exceed allocated
-	 * memory
-	 */
-	if (cdata->num_elems > model->data_size - model->data_pos) {
-		comp_err(dev, "comp_set_model(): too much data");
-		return -EINVAL;
-	}
-
-	ret = memcpy_s((char *)model->data + model->data_pos,
-		       model->data_size - model->data_pos,
+	ret = memcpy_s((char *)model->data_new + offset,
+		       model->data_size - offset,
 		       cdata->data->data, cdata->num_elems);
 	assert(!ret);
 
-	/* update data_pos variable with received number of elements (num_elem)
-	 */
-	model->data_pos += cdata->num_elems;
+	if (!cdata->elems_remaining) {
+		comp_info(dev, "comp_set_model(): final package received");	
+
+		/* The new configuration is OK to be applied */
+		model->data_ready = true;
+
+		/* If component state is READY we can omit old
+		 * configuration immediately. When in playback/capture
+		 * the new configuration presence is checked in copy().
+		 */
+		if (dev->state ==  COMP_STATE_READY) {
+			rfree(model->data);
+			model->data = NULL;
+		}
+
+		/* If there is no existing configuration the received
+		 * can be set to current immediately. It will be
+		 * applied in prepare() when streaming starts.
+		 */
+		if (!model->data) {
+			model->data = model->data_new;
+			model->data_new = NULL;
+		}	
+	}
 
 	/* Update crc value when done */
 	if (done) {
@@ -437,42 +473,46 @@ int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
 int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
 		   struct sof_ipc_ctrl_data *cdata, int size)
 {
-	size_t bs;
 	int ret = 0;
+	uint32_t offset;
 
-	comp_dbg(dev, "comp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_info(dev, "comp_get_model() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
+
+	if (!model->data)
+		comp_info(dev, "comp_get_model(): !model->data");
+
+	if (!model->data_new)
+		comp_info(dev, "comp_get_model(): !model->data_new");
 
 	/* Copy back to user space */
 	if (model->data) {
 		/* reset data_pos variable in case of copying first element */
 		if (!cdata->msg_index) {
-			model->data_pos = 0;
 			comp_dbg(dev, "comp_get_model() model data_size = 0x%x",
 				 model->data_size);
 		}
 
-		bs = cdata->num_elems;
-
 		/* return an error in case of mismatch between num_elems and
 		 * required size
 		 */
-		if (bs > size) {
-			comp_err(dev, "comp_get_model(): invalid size %d", bs);
+		if (cdata->num_elems > size) {
+			comp_err(dev, "comp_get_model(): invalid cdata->num_elems %d", cdata->num_elems);
 			return -EINVAL;
 		}
 
+		offset = model->data_size - cdata->elems_remaining -
+			cdata->num_elems;
+
 		/* copy required size of data */
 		ret = memcpy_s(cdata->data->data, size,
-			       (char *)model->data + model->data_pos,
-			       bs);
+			       (char *)model->data + offset, cdata->num_elems);
+		comp_info(dev, "comp_get_model() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
 		assert(!ret);
 
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = model->data_size;
-		model->data_pos += bs;
-
 	} else {
 		comp_warn(dev, "comp_get_model(): model->data not allocated yet.");
 		cdata->data->abi = SOF_ABI_VERSION;

@@ -476,10 +476,9 @@ struct comp_copy_limits {
 struct comp_model_data {
 	uint32_t data_size;	/**< size of component's model data */
 	void *data;		/**< pointer to model data */
+	void *data_new;		/**< pointer to model data */
 	uint32_t crc;		/**< crc value of model data */
-	uint32_t data_pos;	/**< indicates a data position in data
-				  *  sending/receiving process
-				  */
+	bool data_ready;	/**< set when fully received */	 
 };
 
 /** \brief Computes size of the component device including ipc config. */
@@ -749,9 +748,10 @@ void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model);
  * @param dev Component device
  * @param model Component model struct
  * @param size Required size.
+ * @param init_data Initial model data values.
  */
 int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
-			  uint32_t size);
+			  uint32_t size, void *init_data);
 
 /**
  * Gets model data for large component configurations.

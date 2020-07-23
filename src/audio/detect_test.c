@@ -285,7 +285,8 @@ static struct comp_dev *test_keyword_new(const struct comp_driver *drv,
 		}
 	}
 
-	ret = comp_alloc_model_data(dev, &cd->model, INITIAL_MODEL_DATA_SIZE);
+	ret = comp_alloc_model_data(dev, &cd->model, INITIAL_MODEL_DATA_SIZE,
+				    NULL);
 	if (ret < 0) {
 		comp_err(dev, "test_keyword_new(): model data initial failed");
 		goto fail;
