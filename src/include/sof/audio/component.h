@@ -725,17 +725,17 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 	buffer_unlock(source, source_flags);
 }
 
-struct comp_model_handler;
+struct comp_data_blob_handler;
 
 struct comp_model_data {
 	void *data;
 	size_t data_size;
 };
 
-struct comp_model_data comp_model_get_data(struct comp_dev *dev,
-					   struct comp_model_handler *model_handler);
+struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
+					   struct comp_data_blob_handler *model_handler);
 
-bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler *model_handler);
+bool comp_is_new_data_blob_available(struct comp_dev *dev, struct comp_data_blob_handler *model_handler);
 
 /**
  * Frees data for large component configurations.
@@ -743,7 +743,7 @@ bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler
  * @param dev Component device
  * @param model Component model struct
  */
-void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model);
+void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model);
 
 /**
  * Allocates data for large component configurations.
@@ -753,7 +753,7 @@ void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model
  * @param size Required size.
  * @param init_data Initial model data values.
  */
-int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *model,
+int comp_init_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model,
 			  uint32_t size, void *init_data);
 
 /**
@@ -763,7 +763,7 @@ int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *model
  * @param model Component model struct
  * @param cdata IPC ctrl data
  */
-int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
+int comp_data_blob_set_cmd(struct comp_dev *dev, struct comp_data_blob_handler *model,
 		   struct sof_ipc_ctrl_data *cdata);
 /**
  *
@@ -774,12 +774,12 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
  * @param cdata IPC ctrl data
  * @param size Required size
  */
-int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
+int comp_data_blob_get_cmd(struct comp_dev *dev, struct comp_data_blob_handler *model,
 		   struct sof_ipc_ctrl_data *cdata, int size);
 
-struct comp_model_handler *comp_model_handler_new(struct comp_dev *dev);
+struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev);
 
-void comp_model_handler_free(struct comp_dev *dev, struct comp_model_handler *handler);
+void comp_data_blob_handler_free(struct comp_dev *dev, struct comp_data_blob_handler *handler);
 
 /**
  * Called by component in  params() function in order to set and update some of

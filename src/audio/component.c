@@ -327,7 +327,7 @@ int comp_verify_params(struct comp_dev *dev, uint32_t flag,
 }
 
 /** \brief Struct for large component configs */
-struct comp_model_handler {
+struct comp_data_blob_handler {
 	uint32_t data_size;	/**< size of component's model data */
 	void *data;		/**< pointer to model data */
 	void *data_new;		/**< pointer to model data */
@@ -335,20 +335,20 @@ struct comp_model_handler {
 	bool data_ready;	/**< set when fully received */	 
 };
 
-struct comp_model_data comp_model_get_data(struct comp_dev *dev,
-					   struct comp_model_handler *model_handler)
+struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
+					   struct comp_data_blob_handler *model_handler)
 {
 	struct comp_model_data config = {NULL, 0}; 
 
-	comp_info(dev, "comp_model_get_data()");
+	comp_info(dev, "comp_get_data_blob()");
 
 	if (!model_handler) {
-		comp_err(dev, "comp_model_get_data(): !model_handler");
+		comp_err(dev, "comp_get_data_blob(): !model_handler");
 		return config;
 	}
 
-	if (comp_is_new_model_available(dev, model_handler)) {
-		comp_info(dev, "comp_model_get_data(): new data available");
+	if (comp_is_new_data_blob_available(dev, model_handler)) {
+		comp_info(dev, "comp_get_data_blob(): new data available");
 
 		rfree(model_handler->data);
 		model_handler->data = model_handler->data_new;
@@ -362,7 +362,7 @@ struct comp_model_data comp_model_get_data(struct comp_dev *dev,
 	}
 
 	if (!model_handler->data) {
-		comp_warn(dev, "comp_model_get_data(): model_handler->data is not set.");
+		comp_warn(dev, "comp_get_data_blob(): model_handler->data is not set.");
 		return config;
 	}
 
@@ -372,12 +372,12 @@ struct comp_model_data comp_model_get_data(struct comp_dev *dev,
 	return config;
 }
 
-bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler *model_handler)
+bool comp_is_new_data_blob_available(struct comp_dev *dev, struct comp_data_blob_handler *model_handler)
 {
-	comp_info(dev, "comp_is_new_model_available()");
+	comp_info(dev, "comp_is_new_data_blob_available()");
 
 	if (!model_handler) {
-		comp_err(dev, "comp_is_new_model_available(): !model_handler");
+		comp_err(dev, "comp_is_new_data_blob_available(): !model_handler");
 		return false;
 	}
 
@@ -387,7 +387,7 @@ bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler
 	return false;
 }
 
-void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model)
+void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model)
 {
 	if (!model || !model->data)
 		return;
@@ -400,15 +400,15 @@ void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model
 	model->crc = 0;
 }
 
-int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *model,
+int  comp_init_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model,
 			   uint32_t size, void *init_data)
 {
 	int ret;
 
-	comp_free_model_data(dev, model);
+	comp_free_data_blob(dev, model);
 
 	if (!model) {
-		comp_err(dev, "comp_alloc_model_data(): !model");
+		comp_err(dev, "comp_init_data_blob(): !model");
 		return -ENOMEM;
 	}
 
@@ -418,7 +418,7 @@ int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *mode
 	model->data = rballoc(0, SOF_MEM_CAPS_RAM, size);
 
 	if (!model->data) {
-		comp_err(dev, "comp_alloc_model_data(): model->data rballoc failed");
+		comp_err(dev, "comp_init_data_blob(): model->data rballoc failed");
 		return -ENOMEM;
 	}
 
@@ -437,7 +437,7 @@ int  comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *mode
 	return 0;
 }
 
-int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
+int comp_data_blob_set_cmd(struct comp_dev *dev, struct comp_data_blob_handler *model,
 		   struct sof_ipc_ctrl_data *cdata)
 {
 	bool done = false;
@@ -445,13 +445,13 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 	uint32_t offset;
 	int ret = 0;
 
-	comp_info(dev, "comp_model_set_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_info(dev, "comp_data_blob_set_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
 
 	/* Check that there is no work-in-progress previous request */
 	if (model->data_new && cdata->msg_index == 0) {
-		comp_err(dev, "comp_model_set_cmd(), busy with previous request");
+		comp_err(dev, "comp_data_blob_set_cmd(), busy with previous request");
 		return -EBUSY;
 	}
 
@@ -468,7 +468,7 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 		model->data_new = rballoc(0, SOF_MEM_CAPS_RAM,
 					  cdata->data->size);
 		if (!model->data_new) {
-			comp_err(dev, "comp_model_set_cmd(): model->data_new allocation failed.");
+			comp_err(dev, "comp_data_blob_set_cmd(): model->data_new allocation failed.");
 			return ENOMEM;
 		}
 
@@ -480,16 +480,16 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 	 * model data
 	 */
 	if (!model->data_new) {
-		comp_err(dev, "comp_model_set_cmd(): buffer not allocated");
+		comp_err(dev, "comp_data_blob_set_cmd(): buffer not allocated");
 		return -ENOMEM;
 	}
 
 	size = cdata->data->size;
 	offset = size - cdata->elems_remaining - cdata->num_elems;
 
-	comp_info(dev, "comp_model_set_cmd() model->data_size = %d, cdata->data->size = %d", model->data_size, cdata->data->size);
-	comp_info(dev, "comp_model_set_cmd() offset = %d ", offset);
-	comp_info(dev, "comp_model_set_cmd() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
+	comp_info(dev, "comp_data_blob_set_cmd() model->data_size = %d, cdata->data->size = %d", model->data_size, cdata->data->size);
+	comp_info(dev, "comp_data_blob_set_cmd() offset = %d ", offset);
+	comp_info(dev, "comp_data_blob_set_cmd() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
 
 	ret = memcpy_s((char *)model->data_new + offset,
 		       model->data_size - offset,
@@ -497,7 +497,7 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 	assert(!ret);
 
 	if (!cdata->elems_remaining) {
-		comp_info(dev, "comp_model_set_cmd(): final package received");	
+		comp_info(dev, "comp_data_blob_set_cmd(): final package received");	
 
 		/* The new configuration is OK to be applied */
 		model->data_ready = true;
@@ -524,34 +524,34 @@ int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 	/* Update crc value when done */
 	if (done) {
 		model->crc = crc32(0, model->data, model->data_size);
-		comp_dbg(dev, "comp_model_set_cmd() done, memory_size = 0x%x, crc = 0x%08x",
+		comp_dbg(dev, "comp_data_blob_set_cmd() done, memory_size = 0x%x, crc = 0x%08x",
 			 model->data_size, model->crc);
 	}
 
 	return 0;
 }
 
-int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
+int comp_data_blob_get_cmd(struct comp_dev *dev, struct comp_data_blob_handler *model,
 		   struct sof_ipc_ctrl_data *cdata, int size)
 {
 	int ret = 0;
 	uint32_t offset;
 
-	comp_info(dev, "comp_model_get_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
+	comp_info(dev, "comp_data_blob_get_cmd() msg_index = %d, num_elems = %d, remaining = %d ",
 		 cdata->msg_index, cdata->num_elems,
 		 cdata->elems_remaining);
 
 	if (!model->data)
-		comp_info(dev, "comp_model_get_cmd(): !model->data");
+		comp_info(dev, "comp_data_blob_get_cmd(): !model->data");
 
 	if (!model->data_new)
-		comp_info(dev, "comp_model_get_cmd(): !model->data_new");
+		comp_info(dev, "comp_data_blob_get_cmd(): !model->data_new");
 
 	/* Copy back to user space */
 	if (model->data) {
 		/* reset data_pos variable in case of copying first element */
 		if (!cdata->msg_index) {
-			comp_dbg(dev, "comp_model_get_cmd() model data_size = 0x%x",
+			comp_dbg(dev, "comp_data_blob_get_cmd() model data_size = 0x%x",
 				 model->data_size);
 		}
 
@@ -559,7 +559,7 @@ int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 		 * required size
 		 */
 		if (cdata->num_elems > size) {
-			comp_err(dev, "comp_model_get_cmd(): invalid cdata->num_elems %d", cdata->num_elems);
+			comp_err(dev, "comp_data_blob_get_cmd(): invalid cdata->num_elems %d", cdata->num_elems);
 			return -EINVAL;
 		}
 
@@ -569,13 +569,13 @@ int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 		/* copy required size of data */
 		ret = memcpy_s(cdata->data->data, size,
 			       (char *)model->data + offset, cdata->num_elems);
-		comp_info(dev, "comp_model_get_cmd() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
+		comp_info(dev, "comp_data_blob_get_cmd() cdata->data->data = 0x%x ", (uint32_t)cdata->data->data);
 		assert(!ret);
 
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = model->data_size;
 	} else {
-		comp_warn(dev, "comp_model_get_cmd(): model->data not allocated yet.");
+		comp_warn(dev, "comp_data_blob_get_cmd(): model->data not allocated yet.");
 		cdata->data->abi = SOF_ABI_VERSION;
 		cdata->data->size = 0;
 	}
@@ -583,26 +583,26 @@ int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 	return ret;
 }
 
-struct comp_model_handler *comp_model_handler_new(struct comp_dev *dev)
+struct comp_data_blob_handler *comp_data_blob_handler_new(struct comp_dev *dev)
 {
-	struct comp_model_handler *handler;
+	struct comp_data_blob_handler *handler;
 
-	comp_info(dev, "comp_model_handler_new()");
+	comp_info(dev, "comp_data_blob_handler_new()");
 
 	handler = rzalloc(SOF_MEM_ZONE_RUNTIME, 0, SOF_MEM_CAPS_RAM,
-		sizeof(struct comp_model_handler));
+		sizeof(struct comp_data_blob_handler));
 
 	return handler;
 }
 
-void comp_model_handler_free(struct comp_dev *dev, struct comp_model_handler *handler)
+void comp_data_blob_handler_free(struct comp_dev *dev, struct comp_data_blob_handler *handler)
 {
-	comp_info(dev, "comp_model_handler_free()");
+	comp_info(dev, "comp_data_blob_handler_free()");
 
 	if (!handler)
 		return;
 
-	comp_free_model_data(dev, handler);
+	comp_free_data_blob(dev, handler);
 }
 
 struct comp_dev *comp_make_shared(struct comp_dev *dev)

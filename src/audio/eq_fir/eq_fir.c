@@ -53,7 +53,7 @@ DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
 /* src component private data */
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
-	struct comp_model_handler *model_handler;
+	struct comp_data_blob_handler *model_handler;
 	struct comp_model_data config;
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
@@ -429,9 +429,9 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	cd->fir_delay_size = 0;
 
 	/* component model data handler */
-	cd->model_handler = comp_model_handler_new(dev);
+	cd->model_handler = comp_data_blob_handler_new(dev);
 	if (!cd->model_handler) {
-		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_model_handler_new() failed.");
+		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_data_blob_handler_new() failed.");
 		rfree(dev);
 		rfree(cd);
 		return NULL;
@@ -440,9 +440,9 @@ static struct comp_dev *eq_fir_new(const struct comp_driver *drv,
 	/* Allocate and make a copy of the coefficients blob and reset FIR. If
 	 * the EQ is configured later in run-time the size is zero.
 	 */
-	ret = comp_alloc_model_data(dev, cd->model_handler, bs, ipc_fir->data);
+	ret = comp_init_data_blob(dev, cd->model_handler, bs, ipc_fir->data);
 	if (ret < 0 ) {
-		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_alloc_model_data() failed.");
+		comp_cl_err(&comp_eq_fir, "eq_fir_new(): comp_init_data_blob() failed.");
 	}
 
 	for (i = 0; i < PLATFORM_MAX_CHANNELS; i++)
@@ -459,7 +459,7 @@ static void eq_fir_free(struct comp_dev *dev)
 	comp_info(dev, "eq_fir_free()");
 
 	eq_fir_free_delaylines(cd);
-	comp_model_handler_free(dev, cd->model_handler);
+	comp_data_blob_handler_free(dev, cd->model_handler);
 
 	rfree(cd);
 	rfree(dev);
@@ -474,7 +474,7 @@ static int fir_cmd_get_data(struct comp_dev *dev,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "fir_cmd_get_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_model_get_cmd(dev, cd->model_handler, cdata,
+		ret = comp_data_blob_get_cmd(dev, cd->model_handler, cdata,
 					 max_size);
 		break;
 	default:
@@ -494,7 +494,7 @@ static int fir_cmd_set_data(struct comp_dev *dev,
 	switch (cdata->cmd) {
 	case SOF_CTRL_CMD_BINARY:
 		comp_info(dev, "fir_cmd_set_data(), SOF_CTRL_CMD_BINARY");
-		ret = comp_model_set_cmd(dev, cd->model_handler, cdata);
+		ret = comp_data_blob_set_cmd(dev, cd->model_handler, cdata);
 		break;
 	default:
 		comp_err(dev, "fir_cmd_set_data(): invalid cdata->cmd");
@@ -575,8 +575,8 @@ static int eq_fir_copy(struct comp_dev *dev)
 				  sink_list);
 
 	/* Check for changed configuration */
-	if (comp_is_new_model_available(dev, cd->model_handler)) {
-		cd->config = comp_model_get_data(dev, cd->model_handler);
+	if (comp_is_new_data_blob_available(dev, cd->model_handler)) {
+		cd->config = comp_get_data_blob(dev, cd->model_handler);
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_fir_copy(), failed FIR setup");
@@ -648,7 +648,7 @@ static int eq_fir_prepare(struct comp_dev *dev)
 		goto err;
 	}
 
-	cd->config = comp_model_get_data(dev, cd->model_handler);
+	cd->config = comp_get_data_blob(dev, cd->model_handler);
 
 	if (cd->config.data) {
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
