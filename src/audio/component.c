@@ -331,7 +331,6 @@ struct comp_data_blob_handler {
 	uint32_t data_size;	/**< size of component's model data */
 	void *data;		/**< pointer to model data */
 	void *data_new;		/**< pointer to model data */
-	uint32_t crc;		/**< crc value of model data */
 	bool data_ready;	/**< set when fully received */	 
 };
 
@@ -345,7 +344,6 @@ static void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_hand
 	model->data = NULL;
 	model->data_new = NULL;
 	model->data_size = 0;
-	model->crc = 0;
 }
 
 struct comp_data_blob comp_get_data_blob(struct comp_dev *dev,
@@ -432,7 +430,6 @@ int  comp_init_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *mo
 	model->data = NULL;
 	model->data_size = size;
 	model->data_ready = true;
-	model->crc = 0;
 
 	return 0;
 }
@@ -440,7 +437,6 @@ int  comp_init_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *mo
 int comp_data_blob_set_cmd(struct comp_dev *dev, struct comp_data_blob_handler *model,
 		   struct sof_ipc_ctrl_data *cdata)
 {
-	bool done = false;
 	size_t size;
 	uint32_t offset;
 	int ret = 0;
@@ -519,13 +515,6 @@ int comp_data_blob_set_cmd(struct comp_dev *dev, struct comp_data_blob_handler *
 			model->data = model->data_new;
 			model->data_new = NULL;
 		}	
-	}
-
-	/* Update crc value when done */
-	if (done) {
-		model->crc = crc32(0, model->data, model->data_size);
-		comp_dbg(dev, "comp_data_blob_set_cmd() done, memory_size = 0x%x, crc = 0x%08x",
-			 model->data_size, model->crc);
 	}
 
 	return 0;
