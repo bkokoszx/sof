@@ -21,6 +21,7 @@ DECLARE_TR_CTX(smart_amp_comp_tr, SOF_UUID(smart_amp_comp_uuid),
 struct smart_amp_data {
 	struct sof_smart_amp_config config;
 	struct comp_model_handler *model_handler;
+	struct comp_model_data model;
 
 	struct comp_buffer *source_buf; /**< stream source buffer */
 	struct comp_buffer *feedback_buf; /**< feedback source buffer */

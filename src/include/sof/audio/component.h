@@ -727,6 +727,19 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 
 struct comp_model_handler;
 
+struct comp_model_data {
+	void *data;
+	size_t data_size;
+};
+
+struct comp_model_data comp_model_get_data(struct comp_dev *dev,
+					   struct comp_model_handler *model_handler);
+
+bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler *model_handler);
+
+struct comp_model_data comp_model_get_new_data(struct comp_dev *dev,
+					   struct comp_model_handler *model_handler);
+
 /**
  * Frees data for large component configurations.
  *

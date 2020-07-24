@@ -335,6 +335,72 @@ struct comp_model_handler {
 	bool data_ready;	/**< set when fully received */	 
 };
 
+struct comp_model_data comp_model_get_data(struct comp_dev *dev,
+					   struct comp_model_handler *model_handler)
+{
+	struct comp_model_data config = {NULL, 0}; 
+
+	comp_info(dev, "comp_model_get_data()");
+
+	if (!model_handler) {
+		comp_err(dev, "comp_model_get_data(): !model_handler");
+		return config;
+	}
+
+	if (!model_handler->data) {
+		comp_warn(dev, "comp_model_get_data(): model_handler->data is not set.");
+		return config;
+	}
+
+	config.data = model_handler->data;
+	config.data_size = model_handler->data_size;
+
+	return config;
+}
+
+bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler *model_handler)
+{
+	comp_info(dev, "comp_is_new_model_available()");
+
+	if (!model_handler) {
+		comp_err(dev, "comp_is_new_model_available(): !model_handler");
+		return false;
+	}
+
+	if (model_handler->data_new && model_handler->data_ready)
+		return true;
+	
+	return false;
+}
+
+struct comp_model_data comp_model_get_new_data(struct comp_dev *dev,
+					   struct comp_model_handler *model_handler)
+{
+	struct comp_model_data config = {NULL, 0}; 
+
+	comp_info(dev, "comp_model_get_data()");
+
+	if (!model_handler) {
+		comp_err(dev, "comp_model_get_data(): !model_handler");
+		return config;
+	}
+
+	if (!comp_is_new_model_available(dev, model_handler)) {
+		comp_warn(dev, "comp_model_get_new_data(): new data is not available.");
+		return config;
+	}
+
+	rfree(model_handler->data);
+	model_handler->data = model_handler->data_new;
+	model_handler->data_new = NULL;
+	model_handler->data_ready = false;
+
+	config.data = model_handler->data;
+	config.data_size = model_handler->data_size;
+
+	return config;
+}
+
 void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model)
 {
 	if (!model || !model->data)
