@@ -54,7 +54,7 @@ DECLARE_TR_CTX(eq_fir_tr, SOF_UUID(eq_fir_uuid), LOG_LEVEL_INFO);
 struct comp_data {
 	struct fir_state_32x16 fir[PLATFORM_MAX_CHANNELS]; /**< filters state */
 	struct comp_data_blob_handler *model_handler;
-	struct comp_model_data config;
+	struct comp_data_blob config;
 	enum sof_ipc_frame source_format;	/**< source frame format */
 	enum sof_ipc_frame sink_format;		/**< sink frame format */
 	int32_t *fir_delay;			/**< pointer to allocated RAM */

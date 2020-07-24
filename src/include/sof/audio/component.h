@@ -727,12 +727,12 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 
 struct comp_data_blob_handler;
 
-struct comp_model_data {
+struct comp_data_blob {
 	void *data;
 	size_t data_size;
 };
 
-struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
+struct comp_data_blob comp_get_data_blob(struct comp_dev *dev,
 					   struct comp_data_blob_handler *model_handler);
 
 bool comp_is_new_data_blob_available(struct comp_dev *dev, struct comp_data_blob_handler *model_handler);

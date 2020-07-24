@@ -348,10 +348,10 @@ static void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_hand
 	model->crc = 0;
 }
 
-struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
+struct comp_data_blob comp_get_data_blob(struct comp_dev *dev,
 					   struct comp_data_blob_handler *model_handler)
 {
-	struct comp_model_data config = {NULL, 0}; 
+	struct comp_data_blob config = {NULL, 0}; 
 
 	comp_info(dev, "comp_get_data_blob()");
 
