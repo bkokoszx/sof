@@ -472,15 +472,6 @@ struct comp_copy_limits {
 	int sink_frame_bytes;
 };
 
-/** \brief Struct for large component configs */
-struct comp_model_data {
-	uint32_t data_size;	/**< size of component's model data */
-	void *data;		/**< pointer to model data */
-	void *data_new;		/**< pointer to model data */
-	uint32_t crc;		/**< crc value of model data */
-	bool data_ready;	/**< set when fully received */	 
-};
-
 /** \brief Computes size of the component device including ipc config. */
 #define COMP_SIZE(x) \
 	(sizeof(struct comp_dev) - sizeof(struct sof_ipc_comp) + sizeof(x))
@@ -734,13 +725,15 @@ void comp_get_copy_limits_with_lock(struct comp_buffer *source,
 	buffer_unlock(source, source_flags);
 }
 
+struct comp_model_handler;
+
 /**
  * Frees data for large component configurations.
  *
  * @param dev Component device
  * @param model Component model struct
  */
-void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model);
+void comp_free_model_data(struct comp_dev *dev, struct comp_model_handler *model);
 
 /**
  * Allocates data for large component configurations.
@@ -750,7 +743,7 @@ void comp_free_model_data(struct comp_dev *dev, struct comp_model_data *model);
  * @param size Required size.
  * @param init_data Initial model data values.
  */
-int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
+int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_handler *model,
 			  uint32_t size, void *init_data);
 
 /**
@@ -760,7 +753,7 @@ int comp_alloc_model_data(struct comp_dev *dev, struct comp_model_data *model,
  * @param model Component model struct
  * @param cdata IPC ctrl data
  */
-int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
+int comp_model_set_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 		   struct sof_ipc_ctrl_data *cdata);
 /**
  *
@@ -771,8 +764,12 @@ int comp_set_model(struct comp_dev *dev, struct comp_model_data *model,
  * @param cdata IPC ctrl data
  * @param size Required size
  */
-int comp_get_model(struct comp_dev *dev, struct comp_model_data *model,
+int comp_model_get_cmd(struct comp_dev *dev, struct comp_model_handler *model,
 		   struct sof_ipc_ctrl_data *cdata, int size);
+
+struct comp_model_handler *comp_model_handler_new(struct comp_dev *dev);
+
+void comp_model_handler_free(struct comp_dev *dev, struct comp_model_handler *handler);
 
 /**
  * Called by component in  params() function in order to set and update some of
