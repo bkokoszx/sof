@@ -576,7 +576,7 @@ static int eq_fir_copy(struct comp_dev *dev)
 
 	/* Check for changed configuration */
 	if (comp_is_new_model_available(dev, cd->model_handler)) {
-		cd->config = comp_model_get_new_data(dev, cd->model_handler);
+		cd->config = comp_model_get_data(dev, cd->model_handler);
 		ret = eq_fir_setup(cd, sourceb->stream.channels);
 		if (ret < 0) {
 			comp_err(dev, "eq_fir_copy(), failed FIR setup");

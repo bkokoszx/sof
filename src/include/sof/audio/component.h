@@ -737,9 +737,6 @@ struct comp_model_data comp_model_get_data(struct comp_dev *dev,
 
 bool comp_is_new_model_available(struct comp_dev *dev, struct comp_model_handler *model_handler);
 
-struct comp_model_data comp_model_get_new_data(struct comp_dev *dev,
-					   struct comp_model_handler *model_handler);
-
 /**
  * Frees data for large component configurations.
  *
