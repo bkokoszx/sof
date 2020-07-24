@@ -335,6 +335,19 @@ struct comp_data_blob_handler {
 	bool data_ready;	/**< set when fully received */	 
 };
 
+static void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model)
+{
+	if (!model || !model->data)
+		return;
+
+	rfree(model->data);
+	rfree(model->data_new);
+	model->data = NULL;
+	model->data_new = NULL;
+	model->data_size = 0;
+	model->crc = 0;
+}
+
 struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
 					   struct comp_data_blob_handler *model_handler)
 {
@@ -385,19 +398,6 @@ bool comp_is_new_data_blob_available(struct comp_dev *dev, struct comp_data_blob
 		return true;
 	
 	return false;
-}
-
-void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model)
-{
-	if (!model || !model->data)
-		return;
-
-	rfree(model->data);
-	rfree(model->data_new);
-	model->data = NULL;
-	model->data_new = NULL;
-	model->data_size = 0;
-	model->crc = 0;
 }
 
 int  comp_init_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model,

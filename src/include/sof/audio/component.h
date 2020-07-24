@@ -738,14 +738,6 @@ struct comp_model_data comp_get_data_blob(struct comp_dev *dev,
 bool comp_is_new_data_blob_available(struct comp_dev *dev, struct comp_data_blob_handler *model_handler);
 
 /**
- * Frees data for large component configurations.
- *
- * @param dev Component device
- * @param model Component model struct
- */
-void comp_free_data_blob(struct comp_dev *dev, struct comp_data_blob_handler *model);
-
-/**
  * Allocates data for large component configurations.
  *
  * @param dev Component device
