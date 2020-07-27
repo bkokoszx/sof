@@ -11,8 +11,8 @@
 #include <stdint.h>
 
 /** IPC blob types */
-#define SOF_DETECT_TEST_CONFIG	0
-#define SOF_DETECT_TEST_MODEL	1
+#define SOF_DETECT_TEST_CONFIG		0
+#define SOF_DETECT_TEST_DATA_BLOB	1
 
 struct sof_detect_test_config {
 	uint32_t size;
