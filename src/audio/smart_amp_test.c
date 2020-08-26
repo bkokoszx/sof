@@ -422,7 +422,7 @@ static int smart_amp_copy(struct comp_dev *dev)
 	uint32_t feedback_flags = 0;
 	int ret = 0;
 
-	comp_dbg(dev, "smart_amp_copy()");
+	comp_info(dev, "smart_amp_copy(): sad->feedback_buf->stream.frame_fmt: %d", sad->feedback_buf->stream.frame_fmt);
 
 	buffer_lock(sad->source_buf, &source_flags);
 	buffer_lock(sad->sink_buf, &sink_flags);
@@ -541,7 +541,7 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	 * ATM feedback buffer frame_fmt is hardcoded to s32_le. It should be
 	 * removed when parameters negotiation between pipelines will prepared
 	 */
-	sad->feedback_buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
+	//sad->feedback_buf->stream.frame_fmt = SOF_IPC_FRAME_S32_LE;
 	buffer_unlock(sad->feedback_buf, flags);
 
 	sad->process = get_smart_amp_process(dev);
