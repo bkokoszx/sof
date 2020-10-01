@@ -67,7 +67,12 @@ static inline void arch_timer_disable(struct timer *timer)
 
 uint64_t arch_timer_get_system(struct timer *timer);
 
+#if CONFIG_PERFORMANCE_COUNTERS
+int64_t arch_timer_set(struct timer *timer);
+#else
 int64_t arch_timer_set(struct timer *timer, uint64_t ticks);
+#endif
+
 
 static inline void arch_timer_clear(struct timer *timer)
 {

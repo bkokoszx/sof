@@ -461,6 +461,16 @@ int platform_init(struct sof *sof)
 	/* prevent DSP Common power gating */
 	pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
+#if CONFIG_PERFORMANCE_COUNTERS
+	ret = timer_register(cpu_timer_get(), NULL, NULL);
+	if (ret < 0)
+		return ret;
+
+	arch_timer_set(cpu_timer_get());
+
+	timer_enable(cpu_timer_get(), NULL, 0);
+#endif
+
 #if CONFIG_DSP_RESIDENCY_COUNTERS
 #if CONFIG_CAVS_LPRO_ONLY
 	init_dsp_r_state(r1_r_state);

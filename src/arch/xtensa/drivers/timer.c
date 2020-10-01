@@ -12,6 +12,31 @@
 #include <errno.h>
 #include <stdint.h>
 
+#if CONFIG_PERFORMANCE_COUNTERS
+void timer_64_handler(void *arg)
+{
+	struct timer *timer = arg;
+	uint32_t ccompare;
+
+	if (timer->id >= ARCH_TIMER_COUNT)
+		goto out;
+
+	/* get comparator value - will tell us timeout reason */
+	ccompare = xthal_get_ccompare(timer->id);
+
+	/* is this a 32 bit rollover ? */
+	if (ccompare == 1) {
+		/* roll over the timer */
+		timer->hitime++;
+		arch_timer_clear(timer);
+	}
+
+	xthal_set_ccompare(timer->id, ccompare);
+
+out:
+	platform_shared_commit(timer, sizeof(*timer));
+}
+#else
 void timer_64_handler(void *arg)
 {
 	struct timer *timer = arg;
@@ -48,7 +73,7 @@ void timer_64_handler(void *arg)
 out:
 	platform_shared_commit(timer, sizeof(*timer));
 }
-
+#endif
 int timer64_register(struct timer *timer, void(*handler)(void *arg), void *arg)
 {
 	if (timer->id >= ARCH_TIMER_COUNT)
@@ -99,6 +124,32 @@ out:
 	return time;
 }
 
+#if CONFIG_PERFORMANCE_COUNTERS
+int64_t arch_timer_set(struct timer *timer)
+{
+	uint32_t flags;
+	int64_t ret;
+
+	if (timer->id >= ARCH_TIMER_COUNT) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	flags = arch_interrupt_global_disable();
+
+	/* value 1 represent rollover */
+	xthal_set_ccompare(timer->id, 1);
+
+	arch_interrupt_global_enable(flags);
+
+	ret = 1;
+
+out:
+	platform_shared_commit(timer, sizeof(*timer));
+
+	return ret;
+}
+#else
 int64_t arch_timer_set(struct timer *timer, uint64_t ticks)
 {
 	uint32_t time = 1;
@@ -141,3 +192,4 @@ out:
 
 	return ret;
 }
+#endif

@@ -39,7 +39,11 @@ static inline struct timer *cpu_timer_get(void)
 
 static inline int64_t timer_set(struct timer *timer, uint64_t ticks)
 {
+#if CONFIG_PERFORMANCE_COUNTERS
+	return arch_timer_set(timer);
+#else
 	return arch_timer_set(timer, ticks);
+#endif
 }
 
 void timer_set_ms(struct timer *timer, unsigned int ms);
