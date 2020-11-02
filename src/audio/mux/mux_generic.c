@@ -240,15 +240,22 @@ static void demux_init_look_up_pointers_s32(struct comp_dev *dev,
 {
 	uint32_t elem;
 
+	comp_info(dev, "demux_init_look_up_pointers_s32(): lookup->num_elems: %d", lookup->num_elems);
+
 	/* init pointers */
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		lookup->copy_elem[elem].src = (int32_t *)source->r_ptr +
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
+		comp_info(dev, "demux_init_look_up_pointers_s32(): source->r_ptr: 0x%x, lookup->copy_elem[elem].in_ch: %d", (uint32_t)source->r_ptr, lookup->copy_elem[elem].in_ch);
+
 		lookup->copy_elem[elem].dest = (int32_t *)sink->w_ptr +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
+
+		comp_info(dev, "demux_init_look_up_pointers_s32(): sink->w_ptr: 0x%x, lookup->copy_elem[elem].out_ch: %d", (uint32_t)sink->w_ptr, lookup->copy_elem[elem].out_ch);
+
 	}
 }
 
@@ -385,7 +392,7 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "demux_s32le");
+	comp_info(dev, "demux_s32le: frames: %d", frames);
 
 	if (!lookup || !lookup->num_elems)
 		return;
@@ -396,6 +403,8 @@ static void demux_s32le(struct comp_dev *dev, struct audio_stream *sink,
 		frames_without_wrap =
 			demux_calc_frames_without_wrap_s32(dev, sink, source,
 							   lookup);
+
+		comp_info(dev, "demux_s32le: frames_without_wrap: %d", frames_without_wrap);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
@@ -518,9 +527,12 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 	uint8_t k;
 	uint8_t idx;
 
+	comp_info(dev, "demux_prepare_look_up_table()");
+
 	/* Prepare look up table */
 	for (i = 0; i < cd->config.num_streams; i++) {
 		idx = 0;
+		comp_info(dev, "demux_prepare_look_up_table(): i: %d", i);
 		for (j = 0; j < PLATFORM_MAX_CHANNELS; j++) {
 			for (k = 0; k < PLATFORM_MAX_CHANNELS; k++) {
 				if (cd->config.streams[i].mask[j] & BIT(k)) {
@@ -530,6 +542,11 @@ void demux_prepare_look_up_table(struct comp_dev *dev)
 					cd->lookup[i].copy_elem[idx].stream_id =
 						i;
 					cd->lookup[i].num_elems = ++idx;
+
+					comp_info(dev, "demux_prepare_look_up_table(): cd->lookup[i].copy_elem[idx].in_ch: %d", cd->lookup[i].copy_elem[idx].in_ch);
+					comp_info(dev, "demux_prepare_look_up_table(): cd->lookup[i].copy_elem[idx].out_ch: %d", cd->lookup[i].copy_elem[idx].out_ch);
+					comp_info(dev, "demux_prepare_look_up_table(): cd->lookup[i].copy_elem[idx].stream_id: %d", cd->lookup[i].copy_elem[idx].stream_id);
+					comp_info(dev, "demux_prepare_look_up_table(): cd->lookup[i].num_elems: %d", cd->lookup[i].num_elems);
 				}
 			}
 		}
