@@ -240,8 +240,6 @@ static void demux_init_look_up_pointers_s32(struct comp_dev *dev,
 {
 	uint32_t elem;
 
-	comp_info(dev, "demux_init_look_up_pointers_s32(): lookup->num_elems: %d", lookup->num_elems);
-
 	/* init pointers */
 	for (elem = 0; elem < lookup->num_elems; elem++) {
 		lookup->copy_elem[elem].src = (int32_t *)source->r_ptr +

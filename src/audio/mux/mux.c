@@ -390,8 +390,6 @@ static int demux_copy(struct comp_dev *dev)
 	source = list_first_item(&dev->bsource_list, struct comp_buffer,
 				 sink_list);
 
-	comp_info(dev, "demux_copy(): source->stream.channels: %d", source->stream.channels);
-
 	buffer_lock(source, &flags);
 
 	/* check if source is active */
@@ -424,8 +422,6 @@ static int demux_copy(struct comp_dev *dev)
 	for (i = 0; i < MUX_MAX_STREAMS; i++) {
 		if (!sinks[i])
 			continue;
-		comp_info(dev, "demux_copy(): sinks[i]->id: %d", sinks[i]->id);
-		comp_info(dev, "demux_copy(): sinks[i]->stream.channels: %d", sinks[i]->stream.channels);
 		buffer_invalidate(source, source_bytes);
 		cd->demux(dev, &sinks[i]->stream, &source->stream, frames,
 			  look_ups[i]);
