@@ -227,9 +227,14 @@ static void demux_init_look_up_pointers_s16(struct comp_dev *dev,
 			lookup->copy_elem[elem].in_ch;
 		lookup->copy_elem[elem].src_inc = source->channels;
 
+		comp_info(dev, "demux_init_look_up_pointers_s16(): source->r_ptr: 0x%x, lookup->copy_elem[elem].in_ch: %d", (uint32_t)source->r_ptr, lookup->copy_elem[elem].in_ch);
+
 		lookup->copy_elem[elem].dest = (int16_t *)sink->w_ptr +
 			lookup->copy_elem[elem].out_ch;
 		lookup->copy_elem[elem].dest_inc = sink->channels;
+
+		comp_info(dev, "demux_init_look_up_pointers_s16(): sink->w_ptr: 0x%x, lookup->copy_elem[elem].out_ch: %d", (uint32_t)sink->w_ptr, lookup->copy_elem[elem].out_ch);
+
 	}
 }
 
@@ -280,7 +285,7 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 	uint32_t elem;
 	uint32_t frames_without_wrap;
 
-	comp_dbg(dev, "demux_s16le()");
+	comp_info(dev, "demux_s16le: frames: %d", frames);
 
 	if (!lookup || !lookup->num_elems)
 		return;
@@ -291,6 +296,8 @@ static void demux_s16le(struct comp_dev *dev, struct audio_stream *sink,
 		frames_without_wrap =
 			demux_calc_frames_without_wrap_s16(dev, sink, source,
 							   lookup);
+
+		comp_info(dev, "demux_s16le: frames_without_wrap: %d", frames_without_wrap);
 
 		frames_without_wrap = MIN(frames, frames_without_wrap);
 
