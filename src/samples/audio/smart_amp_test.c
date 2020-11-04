@@ -535,6 +535,8 @@ static int smart_amp_prepare(struct comp_dev *dev)
 	buffer_lock(sad->feedback_buf, &flags);
 	sad->feedback_buf->stream.channels = sad->config.feedback_channels;
 	sad->feedback_buf->stream.rate = sad->source_buf->stream.rate;
+	/* hardcode feedback buffer stream */
+	sad->feedback_buf->stream.frame_fmt = SOF_IPC_FRAME_S16_LE;
 	buffer_unlock(sad->feedback_buf, flags);
 
 	sad->process = get_smart_amp_process(dev);
