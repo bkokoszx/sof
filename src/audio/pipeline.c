@@ -408,21 +408,21 @@ static int pipeline_comp_params_neg(struct comp_dev *current,
 		 dev_comp_id(current), dir);
 
 	/* check if 'current' is already configured */
-	if (current->state != COMP_STATE_INIT &&
-	    current->state != COMP_STATE_READY) {
-		/* return 0 if params matches */
-		if (buffer_params_match(calling_buf,
-					&ppl_data->params->params,
-					BUFF_PARAMS_FRAME_FMT |
-					BUFF_PARAMS_RATE))
-			return 0;
-		/*
-		 * the param is conflict with an active pipeline,
-		 * drop an error and reject the .params() command.
-		 */
-		pipe_err(current->pipeline, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
-		return -EINVAL;
-	}
+	// if (current->state != COMP_STATE_INIT &&
+	//     current->state != COMP_STATE_READY) {
+	// 	/* return 0 if params matches */
+	// 	if (buffer_params_match(calling_buf,
+	// 				&ppl_data->params->params,
+	// 				BUFF_PARAMS_FRAME_FMT |
+	// 				BUFF_PARAMS_RATE))
+	// 		return 0;
+	// 	/*
+	// 	 * the param is conflict with an active pipeline,
+	// 	 * drop an error and reject the .params() command.
+	// 	 */
+	// 	pipe_err(current->pipeline, "pipeline_comp_params_neg(): params conflict with existed active pipeline!");
+	// 	return -EINVAL;
+	// }
 
 	/*
 	 * Negotiation only happen when the current component has > 1
