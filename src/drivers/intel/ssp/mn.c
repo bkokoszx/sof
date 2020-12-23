@@ -322,20 +322,20 @@ static bool find_mn(uint32_t freq, uint32_t bclk,
 static int find_bclk_source(uint32_t bclk,
 			    uint32_t *scr_div, uint32_t *m, uint32_t *n)
 {
-	int i;
+	//int i;
 
 	/* searching the smallest possible bclk source */
-	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
-		if (ssp_freq[i].freq % bclk == 0) {
-			*scr_div = ssp_freq[i].freq / bclk;
-			return i;
+	//for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
+		if (ssp_freq[1].freq % bclk == 0) {
+			*scr_div = ssp_freq[1].freq / bclk;
+			return 1;
 		}
 
 	/* check if we can get target BCLK with M/N */
-	for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
-		if (find_mn(ssp_freq[i].freq, bclk,
+	//for (i = 0; i <= MAX_SSP_FREQ_INDEX; i++)
+		if (find_mn(ssp_freq[1].freq, bclk,
 			    scr_div, m, n))
-			return i;
+			return 1;
 
 	return -1;
 }
