@@ -290,6 +290,9 @@ static void timer_domain_set(struct ll_schedule_domain *domain, uint64_t start)
 
 	domain->last_tick = ticks_req;
 
+	mailbox_sw_reg_write64(SRAM_FOO_TIMER_TICKS_REQ, ticks_req);
+	mailbox_sw_reg_write64(SRAM_FOO_TIMER_TICKS_SET, ticks_set);
+
 	platform_shared_commit(timer_domain, sizeof(*timer_domain));
 }
 
