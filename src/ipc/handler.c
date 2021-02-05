@@ -58,6 +58,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+//int _debug_d0i3 = 0;
+
+void _debug(uint32_t id)
+{
+	//extern int _debug_d0i3;
+
+	//if (_debug_d0i3)
+	mailbox_sw_reg_write(SRAM_REG_DEBUG, id);
+}
+
 #define iGS(x) ((x) & SOF_GLB_TYPE_MASK)
 #define iCS(x) ((x) & SOF_CMD_TYPE_MASK)
 
@@ -643,20 +653,29 @@ static int ipc_pm_gate(uint32_t header)
 
 	IPC_COPY_CMD(pm_gate, ipc_get()->comp_data);
 
-	tr_info(&ipc_tr, "ipc: pm gate flags 0x%x", pm_gate.flags);
+	tr_err(&ipc_tr, "@@@@@@ ipc: pm gate flags 0x%x", pm_gate.flags);
 
 	/* pause dma trace firstly if needed */
 	if (pm_gate.flags & SOF_PM_NO_TRACE)
 		trace_off();
 
-	if (pm_gate.flags & SOF_PM_PPG)
+	if (pm_gate.flags & SOF_PM_PPG) {
+		//_debug_d0i3 = 1;
+		_debug(__LINE__);
 		pm_runtime_disable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
-	else
+	} else {
+		//_debug_d0i3 = 1;
+		_debug(__LINE__);
 		pm_runtime_enable(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
+	}
+
+	//_debug(__LINE__);
 
 	/* resume dma trace if needed */
 	if (!(pm_gate.flags & SOF_PM_NO_TRACE))
 		trace_on();
+
+	//_debug(__LINE__);
 
 	return 0;
 }

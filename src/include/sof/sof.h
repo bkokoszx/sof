@@ -104,4 +104,6 @@ struct sof {
 
 struct sof *sof_get(void);
 
+void _debug(uint32_t id);
+
 #endif /* __SOF_SOF_H__ */
