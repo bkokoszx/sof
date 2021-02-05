@@ -67,6 +67,8 @@ static void ipc_irq_handler(void *arg)
 	struct ipc *ipc = arg;
 	uint32_t dipcctl;
 
+	//_debug(__LINE__);
+
 #if CAVS_VERSION == CAVS_VERSION_1_5
 	uint32_t dipct;
 	uint32_t dipcie;
@@ -183,6 +185,8 @@ enum task_state ipc_platform_do_cmd(void *data)
 #endif
 	struct sof_ipc_cmd_hdr *hdr;
 	struct sof_ipc_reply reply;
+
+	_debug(__LINE__);
 
 #if CAVS_VERSION >= CAVS_VERSION_1_8
 	hdr = ipc_compact_read_msg();

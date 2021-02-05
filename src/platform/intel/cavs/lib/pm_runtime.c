@@ -93,6 +93,8 @@ static inline void cavs_pm_runtime_enable_dsp(bool enable)
 	struct cavs_pm_runtime_data *pprd = prd->platform_data;
 	uint32_t flags;
 
+	//_debug(__LINE__);
+
 	/* request is always run on dsp0 and applies to dsp0,
 	 * so no global lock is required.
 	 */

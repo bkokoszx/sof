@@ -20,6 +20,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+void _debug(uint32_t id);
+
 /* f6448dbf-a8ec-4660-ada2-08a0011a7a86 */
 DECLARE_SOF_UUID("irq-cavs", irq_cavs_uuid, 0xf6448dbf, 0xa8ec, 0x4660,
 		 0xad, 0xa2, 0x08, 0xa0, 0x01, 0x1a, 0x7a, 0x86);
@@ -62,6 +64,8 @@ static inline void irq_lvl2_handler(void *data, int level, uint32_t ilxsd,
 	struct list_item *clist;
 	uint32_t status;
 	uint32_t tries = LVL2_MAX_TRIES;
+
+	//_debug(__LINE__);
 
 	platform_shared_commit(parent, sizeof(*parent));
 

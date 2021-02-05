@@ -87,6 +87,8 @@ void pm_runtime_enable(enum pm_runtime_context context, uint32_t index)
 	tr_dbg(&pm_tr, "pm_runtime_enable() context %d index %d", context,
 	       index);
 
+	//_debug(__LINE__);
+
 	switch (context) {
 	default:
 		platform_pm_runtime_enable(context, index);

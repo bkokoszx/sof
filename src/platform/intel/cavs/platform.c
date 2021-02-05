@@ -528,11 +528,16 @@ void platform_wait_for_interrupt(int level)
 {
 	platform_clock_on_waiti();
 
+	//_debug(__LINE__);
 #if (CONFIG_CAVS_LPS)
-	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID))
+	if (pm_runtime_is_active(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID)) {
+		//_debug(__LINE__);
 		arch_wait_for_interrupt(level);
-	else
+	} else {
+		//_debug(__LINE__);
 		lps_wait_for_interrupt(level);
+	}
+	//_debug(__LINE__);
 #else
 	arch_wait_for_interrupt(level);
 #endif

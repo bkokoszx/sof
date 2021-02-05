@@ -95,6 +95,8 @@ static void platform_pg_task(void)
 				   BIT(IRQ_NUM_EXT_LEVEL2) |
 				   BIT(IRQ_NUM_EXT_LEVEL5));
 
+	//_debug(__LINE__);
+
 	while (1) {
 		/* flush caches and handle int or pwr off */
 		xthal_dcache_all_writeback_inv();
@@ -106,7 +108,10 @@ static void platform_pg_int_handler(void *arg)
 {
 	uint32_t dir = (uint32_t)arg;
 
+	//_debug(__LINE__);
+
 	if (dir == LPS_POWER_FLOW_D0_D0I3) {
+		//_debug(__LINE__);
 		pm_runtime_put(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 		/* init power flow task */
@@ -121,6 +126,7 @@ static void platform_pg_int_handler(void *arg)
 
 		arch_interrupt_disable_mask(0xffffffff);
 	} else {
+		//_debug(__LINE__);
 		pm_runtime_get(PM_RUNTIME_DSP, PLATFORM_PRIMARY_CORE_ID);
 
 		/* set TCB to the one stored in platform_power_gate() */
@@ -136,6 +142,8 @@ static void platform_pg_int_handler(void *arg)
 void lps_wait_for_interrupt(int level)
 {
 	int schedule_irq;
+
+	//_debug(__LINE__);
 
 	/* store the current state */
 
@@ -158,5 +166,7 @@ void lps_wait_for_interrupt(int level)
 	_xtos_set_intlevel(0);
 	interrupt_enable(schedule_irq, NULL);
 	interrupt_set(schedule_irq);
+
+	//_debug(__LINE__);
 }
 
