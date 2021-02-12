@@ -167,7 +167,7 @@ static void platform_clock_low_power_mode(int clock, bool enable)
 	int current_freq_idx = get_current_freq_idx(clock);
 	int freq_idx = *cache_to_uncache(&active_freq_idx);
 
-	if (enable && current_freq_idx > waiti_freq_idx)
+	if (enable && current_freq_idx != waiti_freq_idx)
 		/* LPRO requests are fast, but requests for other ROs
 		 * can take a lot of time. That's why it's better to
 		 * not release active clock just for waiti,
@@ -198,9 +198,9 @@ void platform_clock_on_waiti(void)
 		if (freq_idx != CPU_HPRO_FREQ_IDX)
 			set_cpu_current_freq_idx(CPU_HPRO_FREQ_IDX, true);
 	} else {
-		/* set to use the lowest clock, e.g. WOVCRO for cAVS2.5 */
-		if (freq_idx != 0)
-			set_cpu_current_freq_idx(0, true);
+		/* set waiti clock if not already enabled */
+		if (freq_idx != waiti_freq_idx)
+			set_cpu_current_freq_idx(waiti_freq_idx, true);
 	}
 
 	spin_unlock_irq(&prd->lock, flags);
