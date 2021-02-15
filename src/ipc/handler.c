@@ -675,6 +675,7 @@ static int ipc_glb_pm_message(uint32_t header)
 	case SOF_IPC_PM_CORE_ENABLE:
 		return ipc_pm_core_enable(header);
 	case SOF_IPC_PM_GATE:
+	case SOF_IPC_PM_GATE_OFF:
 		return ipc_pm_gate(header);
 	case SOF_IPC_PM_CLK_SET:
 	case SOF_IPC_PM_CLK_GET:
