@@ -463,11 +463,11 @@ static inline void cavs_pm_runtime_en_dsp_pg(uint32_t index)
 	if (index == PLATFORM_PRIMARY_CORE_ID) {
 		lps_ctl = shim_read(SHIM_LPSCTL);
 
-#if CONFIG_ICELAKE
+//#if CONFIG_ICELAKE
 		shim_write16(SHIM_PWRCTL, SHIM_PWRCTL_TCPCTLPG);
-#else
-		shim_write16(SHIM_PWRCTL, 0);
-#endif
+//#else
+//		shim_write16(SHIM_PWRCTL, 0);
+//#endif
 		lps_ctl |= SHIM_LPSCTL_BID | SHIM_LPSCTL_BATTR_0;
 		lps_ctl &= ~SHIM_LPSCTL_FDSPRUN;
 		shim_write(SHIM_LPSCTL, lps_ctl);
